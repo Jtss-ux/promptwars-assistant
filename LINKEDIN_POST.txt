@@ -16,5 +16,5 @@ Check out the GitHub repo below to see how lightweight and powerful it is. Movin
 
 #BuildwithAI #PromptWarsVirtual @googlefordevelopers @hack2skill
 
-🔗 GitHub: [Insert Your GitHub Repo URL Here]
-🔗 Live Preview: [Insert Your Cloud Run URL Here]
+🔗 GitHub: https://github.com/Jtss-ux/promptwars-assistant
+🔗 Live Preview: https://logicflow-assistant-513799679220.us-central1.run.app
