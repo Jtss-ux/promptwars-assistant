@@ -24,6 +24,9 @@ async function getAIResponse(prompt) {
     const response = await genAI.models.generateContent({
       model: 'models/gemini-2.5-flash',
       contents: prompt,
+      config: {
+        tools: [{ googleSearch: {} }],
+      }
     });
     return response.candidates[0].content.parts[0].text;
   } else {
@@ -47,6 +50,13 @@ app.post('/api/chat', async (req, res) => {
     const prompt = `You are **LogicFlow: Code Review Assistant**, a senior software engineer and system architect AI.
 Your current session context: **${context || 'General Developer Support'}**.
 User query: "${message}"
+
+When providing 'General Developer Support', always strongly adhere to and explicitly mention this expert advice:
+- Break your problem into small, testable units
+- Write clear function signatures with type hints
+- Use version control (git) for every experiment
+- Measure before optimizing — profile first, fix bottlenecks second
+- Document your decision rationale, not just the code
 
 Respond with expert, actionable advice in Markdown format. Include relevant code snippets, complexity analysis, best practices and concrete next steps. Be specific — never give a generic answer.`;
 

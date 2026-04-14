@@ -1,20 +1,24 @@
 # LinkedIn Post Template
 
-Here is the prepared text for your PromptWars Virtual LinkedIn post. Make sure to attach a screenshot of the breathtaking UI!
+Here is the prepared text for your PromptWars Virtual LinkedIn post. Make sure to attach a screenshot of the beautiful UI!
 
 ---
 
-Just built my first intent-driven application for PromptWars: Virtual using Google Antigravity! 🚀
+Hey everyone! 🚀
 
-I tackled the Developer Productivity vertical and created **LogicFlow: Code Review Assistant**—a smart, context-aware AI partner that acts as an expert code reviewer and system architect depending on your execution context.
+I'm incredibly excited to share my submission for the #PromptWars Virtual Hackathon: **LogicFlow - Code Review Assistant** 🤖!
 
-The coolest part? 
-✨ Zero bloated frameworks. Built with a pristine dark-mode glassmorphism UI using Vanilla HTML/CSS/JS.
-🧠 Powered entirely by Google's Vertex AI and Gemini models implicitly authorized through Google Cloud Run!
+As developers, we've all experienced the frustration of generic AI coding answers or, worse, hallucinated APIs. I wanted to build an AI mentor that actually *understands* development context and validates its facts.
 
-Check out the GitHub repo below to see how lightweight and powerful it is. Moving away from manual coding and towards intent-driven development feels like having superpowers.
+LogicFlow is a context-aware developer assistant with a premium, sleek glassmorphism UI. You select your current task (like "System Architecture" or "Bug Detection"), and the Node.js backend dynamically builds a robust prompt matrix to instruct the AI to behave like a senior architect.
 
-#BuildwithAI #PromptWarsVirtual @googlefordevelopers @hack2skill
+💡 The coolest part? Integrating **Meaningful Google Services**. LogicFlow utilizes Google's **Vertex AI (Gemini 2.5 Flash)** augmented with native **Google Search Grounding**, allowing the model to fact-check its code reviews against the latest internet documentation in real-time, completely preventing hallucinated API syntax. It also features 1-click Markdown exports for team productivity!
 
-🔗 GitHub: https://github.com/Jtss-ux/promptwars-assistant
+All successfully containerized and deployed flawlessly to Google Cloud Run! ☁️
+
+Check out the GitHub repo below and let me know your thoughts!
+
+#BuildwithAI #PromptWarsVirtual @googlefordevelopers @hack2skill #GoogleCloud #VertexAI 
+
+🔗 GitHub: https://github.com/Jtss-ux/assistant-ai
 🔗 Live Preview: https://logicflow-assistant-513799679220.us-central1.run.app

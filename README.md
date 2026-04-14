@@ -13,9 +13,9 @@ LogicFlow targets the **Developer Productivity** vertical. The chosen persona is
 
 ## 💡 Approach and Logic
 The application consists of a lightweight server-side integration utilizing **Google's Vertex AI (Gemini 2.5 Flash)** and a premium Vanilla HTML/CSS/JS frontend to keep the payload unbloated while focusing on maximum aesthetic impact.
-1. **Frontend**: Uses glassmorphism and modern web design principles to wow users immediately. It captures user inputs and context without heavy frameworks. The UI includes dynamic elements like a functional typing indicator and markdown rendering.
-2. **Backend**: An Express.js server that processes the user query and the selected execution context, dynamically injecting them into a structured prompt matrix before passing it to Vertex AI.
-3. **Google Services**: The assistant strictly relies on **Vertex AI SDK** operating seamlessly under Google App Default Credentials through Google Cloud Run. It securely queries the models.
+1. **Frontend**: Uses glassmorphism and modern web design principles to wow users immediately. It captures user inputs and context without heavy frameworks, utilizing dynamic elements like typing animations, premium syntax highlighting, and Markdown exports.
+2. **Backend**: An Express.js server that dynamically constructs robust prompts based on selected execution contexts, ensuring the LLM explicitly adheres to expert development best practices.
+3. **Meaningful Google Services Integration**: The application strictly relies on the **Vertex AI SDK / Gemini 2.5 Flash** integrated natively with **Google Search Grounding**. This allows LogicFlow to run real-time queries against the internet to validate code against the latest docs—preventing outdated hallucinations. Ensure it runs securely using App Default Credentials via Google Cloud Run or a `.env` API key.
 
 ## 🛠️ How the Solution Works
 1. Select your target **Context** from the dropdown on the top right (e.g., "Debugging & Error Resolution").

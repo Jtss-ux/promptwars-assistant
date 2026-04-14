@@ -22,6 +22,26 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (isMarkdown) {
             bubble.innerHTML = marked.parse(text);
+            bubble.querySelectorAll('pre code').forEach((block) => {
+                if (window.hljs) hljs.highlightElement(block);
+            });
+            
+            // Add Export button to System AI replies
+            if (sender === 'system') {
+                const exportBtn = document.createElement('button');
+                exportBtn.className = 'export-btn';
+                exportBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Export (.md)';
+                exportBtn.onclick = () => {
+                    const blob = new Blob([text], { type: 'text/markdown' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `LogicFlow-Review-${Date.now()}.md`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                };
+                msgDiv.appendChild(exportBtn);
+            }
         } else {
             bubble.textContent = text;
         }
