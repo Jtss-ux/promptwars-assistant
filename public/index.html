@@ -17,11 +17,37 @@
         <div class="blob blob-2"></div>
     </div>
     
-    <main class="app-container">
-        <header role="banner">
-            <h1>LogicFlow <span>Code Review Assistant</span></h1>
-            <p>Your intelligent context-aware developer partner built for PromptWars Virtual</p>
-        </header>
+    <div class="layout-wrapper">
+        <aside class="sidebar glass" role="complementary" aria-label="Dashboard Sidebar">
+            <div class="sidebar-section">
+                <h3>Recent Chats</h3>
+                <ul id="recent-chats-list">
+                    <li class="empty-state">No conversations yet</li>
+                </ul>
+            </div>
+            
+            <div class="sidebar-section">
+                <h3 id="tasks-header">Tasks (0)</h3>
+                <ul id="tasks-list">
+                    <li class="empty-state">No active tasks</li>
+                </ul>
+            </div>
+
+            <div class="sidebar-section log-section">
+                <h3>Agent Log</h3>
+                <div class="agent-log-console" id="agent-log-console" role="log" aria-live="polite">
+                    <div>> System initialized.</div>
+                    <div>> MCP connected.</div>
+                    <div>> Knowledge base ready.</div>
+                </div>
+            </div>
+        </aside>
+
+        <main class="app-container">
+            <header role="banner">
+                <h1>LogicFlow <span>Code Review Assistant</span></h1>
+                <p>Your intelligent context-aware developer partner built for PromptWars Virtual</p>
+            </header>
         
         <div class="context-panel glass" role="toolbar" aria-label="Settings and Actions">
             <h2>
@@ -58,6 +84,7 @@
             </div>
         </div>
     </main>
+    </div>
 
     <script src="app.js"></script>
 </body>

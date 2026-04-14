@@ -5,8 +5,59 @@ document.addEventListener('DOMContentLoaded', () => {
     const sendBtn = document.getElementById('send-btn');
     const contextSelector = document.getElementById('context-selector');
     const exportBtn = document.getElementById('export-history-btn');
+    const agentLogConsole = document.getElementById('agent-log-console');
+    const recentChatsList = document.getElementById('recent-chats-list');
+    const tasksHeader = document.getElementById('tasks-header');
 
     let chatHistory = []; // For local CSV export
+    let activeTasks = 0;
+
+    // --- Sidebar Utilities ---
+
+    function addAgentLog(msg) {
+        if (!agentLogConsole) return;
+        const entry = document.createElement('div');
+        entry.textContent = '> ' + msg;
+        agentLogConsole.appendChild(entry);
+        agentLogConsole.scrollTop = agentLogConsole.scrollHeight;
+    }
+
+    function setTaskCount(delta) {
+        activeTasks = Math.max(0, activeTasks + delta);
+        if (tasksHeader) tasksHeader.textContent = `Tasks (${activeTasks})`;
+        const tasksList = document.getElementById('tasks-list');
+        if (!tasksList) return;
+        if (activeTasks > 0) {
+            tasksList.innerHTML = `<li>Generating AI review... <span style="color:#a855f7">●</span></li>`;
+        } else {
+            tasksList.innerHTML = `<li class="empty-state">No active tasks</li>`;
+        }
+    }
+
+    function saveRecentChat(firstMessage) {
+        const MAX = 6;
+        const snippet = firstMessage.length > 40 ? firstMessage.slice(0, 40) + '…' : firstMessage;
+        let recent = JSON.parse(localStorage.getItem('lf_recent_chats') || '[]');
+        recent.unshift({ text: snippet, ts: Date.now() });
+        recent = recent.slice(0, MAX);
+        localStorage.setItem('lf_recent_chats', JSON.stringify(recent));
+        renderRecentChats();
+    }
+
+    function renderRecentChats() {
+        if (!recentChatsList) return;
+        const recent = JSON.parse(localStorage.getItem('lf_recent_chats') || '[]');
+        if (recent.length === 0) {
+            recentChatsList.innerHTML = '<li class="empty-state">No conversations yet</li>';
+        } else {
+            recentChatsList.innerHTML = recent.map(
+                r => `<li title="${r.text}">${r.text}</li>`
+            ).join('');
+        }
+    }
+
+    // Hydrate on load
+    renderRecentChats();
 
     // Create typing indicator element
     const typingIndicator = document.createElement('div');
@@ -90,6 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let displayMessage = text;
         if (githubUrl) displayMessage += `\n[Attached GitHub File: ${githubUrl}]`;
         appendMessage('user', displayMessage);
+        saveRecentChat(text || githubUrl);
         
         userInput.value = '';
         githubInput.value = '';
@@ -97,6 +149,8 @@ document.addEventListener('DOMContentLoaded', () => {
         chatContainer.appendChild(typingIndicator);
         typingIndicator.classList.add('active');
         scrollToBottom();
+        setTaskCount(+1);
+        addAgentLog(`Context: ${context}`);
 
         let githubCode = '';
         if (githubUrl) {
@@ -109,10 +163,12 @@ document.addEventListener('DOMContentLoaded', () => {
                      return;
                 }
 
+                addAgentLog('Fetching GitHub file...');
                 const rawUrl = getRawGithubUrl(githubUrl);
                 const codeRes = await fetch(rawUrl);
                 if (codeRes.ok) {
                     githubCode = await codeRes.text();
+                    addAgentLog(`File loaded (${(githubCode.length / 1024).toFixed(1)} KB).`);
                 } else {
                     appendMessage('system', `⚠️ **Notice:** Failed to fetch the GitHub file. Make sure the repository is public and the URL is valid. (Status: ${codeRes.status})`, true);
                     typingIndicator.classList.remove('active');
@@ -129,6 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
+            addAgentLog('Calling Gemini API...');
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -140,10 +197,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typingIndicator.parentNode) {
                 chatContainer.removeChild(typingIndicator);
             }
+            setTaskCount(-1);
             
             if (data.reply) {
+                addAgentLog('Review complete.');
                 appendMessage('system', data.reply, true);
             } else {
+                addAgentLog('Error: No reply received.');
                 appendMessage('system', 'Sorry, I encountered an error and could not generate a response.');
             }
         } catch (err) {
@@ -152,6 +212,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typingIndicator.parentNode) {
                 chatContainer.removeChild(typingIndicator);
             }
+            setTaskCount(-1);
+            addAgentLog('Error: Server unreachable.');
             appendMessage('system', 'Error connecting to the server. Please ensure the backend is running.');
         }
     }
