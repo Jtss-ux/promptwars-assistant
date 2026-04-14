@@ -1,0 +1,20 @@
+# LinkedIn Post Template
+
+Here is the prepared text for your PromptWars Virtual LinkedIn post. Make sure to attach a screenshot of the breathtaking UI!
+
+---
+
+Just built my first intent-driven application for PromptWars: Virtual using Google Antigravity! 🚀
+
+I tackled the Developer Productivity vertical and created **LogicFlow Assistant**—a smart, context-aware AI partner that acts as an expert code reviewer and system architect depending on your execution context.
+
+The coolest part? 
+✨ Zero bloated frameworks. Built with a pristine dark-mode glassmorphism UI using Vanilla HTML/CSS/JS.
+🧠 Powered entirely by Google's Vertex AI and Gemini models implicitly authorized through Google Cloud Run!
+
+Check out the GitHub repo below to see how lightweight and powerful it is. Moving away from manual coding and towards intent-driven development feels like having superpowers.
+
+#BuildwithAI #PromptWarsVirtual @googlefordevelopers @hack2skill
+
+🔗 GitHub: [Insert Your GitHub Repo URL Here]
+🔗 Live Preview: [Insert Your Cloud Run URL Here]

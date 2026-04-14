@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LogicFlow Assistant | PromptWars</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <!-- Highlight.js for code formatting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.0/marked.min.js"></script>
+</head>
+<body>
+    <div class="background-blobs">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+    </div>
+    
+    <main class="app-container">
+        <header>
+            <h1>LogicFlow <span>Assistant</span></h1>
+            <p>Your intelligent context-aware developer partner built for PromptWars Virtual</p>
+        </header>
+        
+        <div class="context-panel glass">
+            <h2>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg> 
+                Execution Context
+            </h2>
+            <select id="context-selector">
+                <option value="General Developer Support">General Developer Support</option>
+                <option value="Code Review & Optimization">Code Review & Optimization</option>
+                <option value="System Architecture Design">System Architecture Design</option>
+                <option value="Debugging & Error Resolution">Debugging & Error Resolution</option>
+            </select>
+        </div>
+
+        <div class="chat-container glass" id="chat-container">
+            <div class="message system">
+                <div class="avatar">⚡</div>
+                <div class="bubble">Welcome to LogicFlow! Select your interaction context above and let me know how I can help you build today.</div>
+            </div>
+        </div>
+
+        <div class="input-container glass">
+            <input type="text" id="user-input" placeholder="Describe your issue or write a prompt..." autocomplete="off">
+            <button id="send-btn">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            </button>
+        </div>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
