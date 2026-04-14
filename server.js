@@ -111,22 +111,37 @@ function sanitizeInput(str) {
 }
 
 /**
- * Emit a structured JSON log entry compatible with Google Cloud Logging.
- * When running on Cloud Run, these entries are automatically ingested
- * and indexed by Cloud Logging with proper severity levels.
+ * Emit a structured JSON log entry fully compatible with Google Cloud Logging.
  *
- * @param {string} severity - Log level: 'INFO', 'WARNING', 'ERROR'.
- * @param {string} message  - Human-readable log message.
- * @param {Object} [meta]   - Optional structured metadata payload.
- * @see https://cloud.google.com/logging/docs/structured-logging
+ * The log format follows the Cloud Logging structured logging specification:
+ * - `severity`  maps to Cloud Logging severity levels (INFO, WARNING, ERROR).
+ * - `message`   is the primary human-readable log line.
+ * - `httpRequest` is an optional structured field automatically parsed by
+ *   Cloud Logging to populate the request log viewer.
+ *
+ * When deployed to Cloud Run, stdout/stderr is automatically forwarded to
+ * Cloud Logging and these structured entries are indexed with proper
+ * severity filtering, log-based metrics, and alerting support.
+ *
+ * @param {string} severity        - Log severity: 'INFO' | 'WARNING' | 'ERROR'.
+ * @param {string} message         - Human-readable description of the event.
+ * @param {Object} [meta]          - Optional structured key-value metadata.
+ * @param {Object} [httpRequestInfo] - Optional HTTP request context for Cloud Logging.
+ * @returns {void}
+ * @see {@link https://cloud.google.com/logging/docs/structured-logging Cloud Logging Structured Logging}
+ * @see {@link https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry#HttpRequest HttpRequest field spec}
  */
-function log(severity, message, meta = {}) {
+function log(severity, message, meta = {}, httpRequestInfo = null) {
   const entry = {
     severity,
     message,
     timestamp: new Date().toISOString(),
+    logging: { googleapis: { com: { labels: { service: 'logicflow-assistant' } } } },
     ...meta,
   };
+  if (httpRequestInfo) {
+    entry.httpRequest = httpRequestInfo;
+  }
   if (severity === 'ERROR') {
     console.error(JSON.stringify(entry));
   } else {
@@ -239,6 +254,9 @@ function getFallbackResponse(userMessage, context) {
  * @returns {{ reply: string, stats?: Object }} JSON response.
  */
 app.post('/api/chat', chatLimiter, async (req, res) => {
+  // Prevent caching of AI-generated responses (sensitive, personalised content)
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+
   try {
     // ── Input Validation ──────────────────────────────────────────────────
     const contentType = req.headers['content-type'] || '';
@@ -294,6 +312,12 @@ CRITICAL RESPONSE RULES:
       elapsedMs,
       promptTokens: result.promptTokens,
       totalTokens: result.totalTokens,
+    }, {
+      requestMethod: req.method,
+      requestUrl: req.originalUrl,
+      status: 200,
+      userAgent: req.headers['user-agent'] || '',
+      latency: `${(elapsedMs / 1000).toFixed(3)}s`,
     });
 
     return res.json({
