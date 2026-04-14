@@ -12,6 +12,7 @@
   "type": "commonjs",
   "dependencies": {
     "@google-cloud/vertexai": "^1.11.0",
+    "@google/genai": "^1.50.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1"
