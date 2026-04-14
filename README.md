@@ -2,39 +2,147 @@
 
 **PromptWars Virtual Submission**
 
-LogicFlow: Code Review Assistant is a smart, dynamic AI assistant designed to help developers contextually solve coding problems, review code, and design system architectures. By adapting to the selected "Execution Context," LogicFlow provides tailored, intelligent responses powered by Google's Vertex AI / Gemini ecosystem.
+LogicFlow is an AI-powered, context-aware Code Review Assistant designed to help developers review code, debug issues, and architect systems — all through a conversational interface powered by Google Gemini 2.5 Flash with real-time Google Search grounding.
+
+---
 
 ## 🚀 The Vertical: Developer Productivity & Mentorship
-LogicFlow targets the **Developer Productivity** vertical. The chosen persona is an "Expert AI Developer and System Architect." It acts logically based on the user's selected context:
-- General Developer Support
-- Code Review & Optimization
-- System Architecture Design
-- Debugging & Error Resolution
 
-## 💡 Approach and Logic
-The application consists of a lightweight server-side integration utilizing **Google's Vertex AI (Gemini 2.5 Flash)** and a premium Vanilla HTML/CSS/JS frontend to keep the payload unbloated while focusing on maximum aesthetic impact.
-1. **Frontend**: Uses glassmorphism and modern web design principles to wow users immediately. It captures user inputs and context without heavy frameworks, utilizing dynamic elements like typing animations, premium syntax highlighting, and Markdown exports.
-2. **Backend**: An Express.js server that dynamically constructs robust prompts based on selected execution contexts, ensuring the LLM explicitly adheres to expert development best practices.
-3. **Meaningful Google Services Integration**: The application strictly relies on the **Vertex AI SDK / Gemini 2.5 Flash** integrated natively with **Google Search Grounding**. This allows LogicFlow to run real-time queries against the internet to validate code against the latest docs—preventing outdated hallucinations. Ensure it runs securely using App Default Credentials via Google Cloud Run or a `.env` API key.
+LogicFlow targets the **Developer Productivity** vertical with an "Expert AI Developer" persona that adapts its behavior based on the user's selected execution context:
 
-## 🛠️ How the Solution Works
-1. Select your target **Context** from the dropdown on the top right (e.g., "Debugging & Error Resolution").
-2. Describe your issue in the chat box at the bottom.
-3. The query is transmitted to the Node.js backend running on Google Cloud Run.
-4. The backend generates context-aware logic and queries the Gemini 2.5 Flash model.
-5. The frontend safely renders the assistant's robust markdown response, displaying code blocks naturally.
+| Context | Behavior |
+|---|---|
+| **General Developer Support** | Answers broad coding questions concisely |
+| **Code Review & Optimization** | Deep-dives into code quality, performance, and best practices |
+| **System Architecture Design** | Provides architecture patterns, SOLID principles, and scalability advice |
+| **Debugging & Error Resolution** | Systematic debugging strategies with structured logging guidance |
+
+---
+
+## 💡 Approach & Architecture
+
+```
+┌────────────────────────────────────────────────────────────┐
+│  Browser (Vanilla HTML/CSS/JS)                             │
+│  ├── Glassmorphism UI with dark-mode design                │
+│  ├── Markdown rendering (marked.js + highlight.js)         │
+│  ├── Session persistence (localStorage)                    │
+│  └── WCAG 2.1 AA accessible (skip-nav, ARIA, reduced motion) │
+└──────────────────────┬─────────────────────────────────────┘
+                       │ POST /api/chat
+┌──────────────────────▼─────────────────────────────────────┐
+│  Express.js Server (Node 20)                               │
+│  ├── Security: helmet, CORS, rate limiting, input sanitize │
+│  ├── Performance: gzip compression, static caching         │
+│  ├── Structured JSON logging (Cloud Logging compatible)    │
+│  └── Graceful shutdown (SIGTERM handling)                   │
+└──────────────────────┬─────────────────────────────────────┘
+                       │
+┌──────────────────────▼─────────────────────────────────────┐
+│  Google AI Services                                        │
+│  ├── Gemini 2.5 Flash (Developer API) with Search Grounding│
+│  └── Vertex AI (Cloud Run ADC fallback)                    │
+└────────────────────────────────────────────────────────────┘
+```
+
+### Key Design Decisions
+
+1. **Zero-Framework Frontend** — Vanilla HTML/CSS/JS keeps the payload under 50 KB while delivering a premium glassmorphism UI with micro-animations.
+2. **Dual AI Backend** — Supports both API-key and ADC authentication, automatically selecting the right path based on environment.
+3. **Google Search Grounding** — Prevents hallucinations by grounding AI responses with live web search results.
+4. **Defence-in-Depth Security** — Helmet headers, HTML entity sanitization, rate limiting, body size limits, and Content-Type validation.
+
+---
+
+## 🛡️ Security Measures
+
+| Layer | Implementation |
+|---|---|
+| HTTP Headers | `helmet` sets X-Content-Type-Options, X-Frame-Options, HSTS, etc. |
+| Input Sanitization | Server-side HTML entity escaping (`<`, `>`, `"`, `'`, `&`) prevents XSS |
+| Rate Limiting | 50 requests per 15 min per IP via `express-rate-limit` |
+| Body Size Limits | 50 KB JSON body limit; 5,000 char message limit; 50,000 char code limit |
+| Content-Type Validation | Rejects non-JSON requests with 415 status |
+| Container Security | Non-root user (`USER node`) in Docker; multi-stage builds |
+
+---
+
+## ♿ Accessibility (WCAG 2.1 AA)
+
+- **Skip Navigation** link for keyboard users
+- **ARIA landmarks** (`role="main"`, `role="complementary"`, `role="log"`)
+- **Live regions** (`aria-live="polite"`) for dynamic chat updates
+- **Screen reader announcements** for all user actions
+- **Keyboard shortcuts** — `Ctrl+/` to focus input, `Escape` to close sidebar
+- **Focus-visible indicators** with high-contrast outlines
+- **`prefers-reduced-motion`** media query disables animations for sensitive users
+- **Semantic HTML5** with proper heading hierarchy (`<h1>` → `<h3>`)
+
+---
 
 ## 🧪 Automated Testing
-LogicFlow is equipped with reliable End-to-End (E2E) testing powered by the native `node:test` runner. The test suite automatically validates UI responses, API status codes, error handling (400 Bad Requests), and live AI integrations.
-To execute the tests locally:
+
+LogicFlow uses the native `node:test` runner for zero-dependency testing:
+
 ```bash
 npm test
 ```
 
-## 📝 Assumptions Made
-- The user requires instant visual feedback, minimizing interaction friction.
-- The assistant operates as a standalone service designed for Cloud Run.
-- Cloud Run ensures seamless scaling and authentication handling for Google Services without needing explicit API keys in the source.
+### Test Coverage
+
+| Category | Tests |
+|---|---|
+| **Unit** | `sanitizeInput()` — XSS, ampersands, quotes, edge cases, non-string types |
+| **Validation** | Missing message, non-string types, length limits, oversized code, Content-Type |
+| **Security** | Helmet headers presence verification |
+| **Integration** | Health check endpoint, static file serving |
+| **E2E** | Full AI round-trip with Gemini response validation |
 
 ---
-*Built via Intent-Driven Development with Google Antigravity.*
+
+## 🛠️ Local Development
+
+```bash
+# Install dependencies
+npm install
+
+# Create .env file
+echo "GEMINI_API_KEY=your_key_here" > .env
+
+# Start development server
+npm run dev
+
+# Run tests
+npm test
+```
+
+---
+
+## 🐳 Docker & Cloud Run Deployment
+
+```bash
+# Build container
+docker build -t logicflow .
+
+# Run locally
+docker run -p 8080:8080 -e GEMINI_API_KEY=your_key logicflow
+
+# Deploy to Cloud Run
+gcloud run deploy logicflow \
+  --source . \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --set-secrets=GEMINI_API_KEY=gemini-key:latest
+```
+
+---
+
+## 📝 Assumptions
+
+- The user requires instant visual feedback with minimal interaction friction.
+- The assistant operates as a standalone service designed for Google Cloud Run.
+- Cloud Run provides seamless scaling and authentication handling for Google Services via ADC without hardcoded credentials.
+
+---
+
+*Built with Google Gemini, Vertex AI, and Cloud Run for PromptWars Virtual.*

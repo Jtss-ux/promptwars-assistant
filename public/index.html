@@ -3,87 +3,121 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LogicFlow: Code Review Assistant</title>
+    <meta name="description" content="LogicFlow is an AI-powered code review assistant built with Google Gemini, offering context-aware developer support, architecture design, and debugging guidance.">
+    <meta name="theme-color" content="#0a0a0f">
+    <title>LogicFlow: Code Review Assistant — AI Developer Partner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <!-- Highlight.js for code formatting -->
+    <!-- Highlight.js for code syntax formatting -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.0/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.0/marked.min.js" defer></script>
 </head>
 <body>
-    <div class="background-blobs">
+    <!-- Skip Navigation Link (Accessibility) -->
+    <a href="#user-input" class="skip-link" id="skip-nav">Skip to chat input</a>
+
+    <div class="background-blobs" aria-hidden="true">
         <div class="blob blob-1"></div>
         <div class="blob blob-2"></div>
     </div>
-    
-    <div class="layout-wrapper">
-        <aside class="sidebar glass" role="complementary" aria-label="Dashboard Sidebar">
+
+    <div class="layout-wrapper" id="layout-wrapper">
+        <main class="app-container" id="main-content" role="main">
+            <header role="banner">
+                <div class="header-content">
+                    <h1>LogicFlow <span>Code Review Assistant</span></h1>
+                    <button id="sidebar-toggle" class="sidebar-toggle" aria-label="Toggle sidebar navigation" aria-expanded="false" aria-controls="main-sidebar">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                            <line x1="3" y1="12" x2="21" y2="12"></line>
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <line x1="3" y1="18" x2="21" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                <p>Your intelligent context-aware developer partner built for PromptWars Virtual</p>
+            </header>
+
+            <div class="chat-container glass" id="chat-container" role="log" aria-live="polite" aria-atomic="false" aria-label="Chat conversation history">
+                <div class="message system" role="article">
+                    <div class="avatar" aria-hidden="true">⚡</div>
+                    <div class="bubble" tabindex="0">Welcome to LogicFlow! Select your interaction context in the sidebar and let me know how I can help you build today.</div>
+                </div>
+            </div>
+
+            <!-- Screen reader live announcements -->
+            <div id="sr-announcer" class="sr-only" aria-live="assertive" aria-atomic="true" role="status"></div>
+
+            <div class="input-panel glass" role="form" aria-label="Chat input form">
+                <label for="github-url" class="sr-only">Optional GitHub raw file URL</label>
+                <input type="url" id="github-url" placeholder="Optional: Paste a GitHub file URL..." autocomplete="off" aria-describedby="github-url-hint" tabindex="0">
+                <span id="github-url-hint" class="sr-only">Paste a direct link to a specific file on GitHub for code review</span>
+
+                <div class="input-container" style="padding: 0;">
+                    <label for="user-input" class="sr-only">Describe your issue or write a prompt</label>
+                    <input type="text" id="user-input" placeholder="Describe your issue or write a prompt..." autocomplete="off" tabindex="0" aria-describedby="input-hint">
+                    <span id="input-hint" class="sr-only">Type your question and press Enter or click Send</span>
+                    <button id="send-btn" aria-label="Send message" tabindex="0">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                    </button>
+                </div>
+                <div class="input-meta" id="input-meta" aria-live="polite">
+                    <span id="char-count" class="char-count" aria-label="Character count">0 / 5000</span>
+                    <span class="shortcut-hint" aria-hidden="true">Press <kbd>Ctrl</kbd>+<kbd>/</kbd> to focus</span>
+                </div>
+            </div>
+        </main>
+
+        <aside class="sidebar glass" id="main-sidebar" role="complementary" aria-label="Dashboard sidebar">
+            <div class="sidebar-section context-section">
+                <h3 id="context-heading">Execution Context</h3>
+                <div class="context-panel" role="group" aria-labelledby="context-heading">
+                    <label for="context-selector" class="sr-only">Select execution context</label>
+                    <select id="context-selector" aria-label="Select execution context" tabindex="0">
+                        <option value="General Developer Support">General Developer Support</option>
+                        <option value="Code Review & Optimization">Code Review & Optimization</option>
+                        <option value="System Architecture Design">System Architecture Design</option>
+                        <option value="Debugging & Error Resolution">Debugging & Error Resolution</option>
+                    </select>
+                    <button id="export-history-btn" class="export-btn-sidebar" aria-label="Export chat history to CSV file" tabindex="0">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Export Session
+                    </button>
+                    <button id="new-chat-btn" class="new-chat-btn" aria-label="Start a new chat session" tabindex="0">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        New Chat
+                    </button>
+                </div>
+            </div>
+
             <div class="sidebar-section">
-                <h3>Recent Chats</h3>
-                <ul id="recent-chats-list">
+                <h3 id="recent-heading">Recent Chats</h3>
+                <ul id="recent-chats-list" role="list" aria-labelledby="recent-heading">
                     <li class="empty-state">No conversations yet</li>
                 </ul>
             </div>
-            
+
             <div class="sidebar-section">
                 <h3 id="tasks-header">Tasks (0)</h3>
-                <ul id="tasks-list">
+                <ul id="tasks-list" role="list" aria-labelledby="tasks-header">
                     <li class="empty-state">No active tasks</li>
                 </ul>
             </div>
 
             <div class="sidebar-section log-section">
-                <h3>Agent Log</h3>
-                <div class="agent-log-console" id="agent-log-console" role="log" aria-live="polite">
-                    <div>> System initialized.</div>
-                    <div>> MCP connected.</div>
-                    <div>> Knowledge base ready.</div>
+                <h3 id="log-heading">Agent Log</h3>
+                <div class="agent-log-console" id="agent-log-console" role="log" aria-live="polite" aria-labelledby="log-heading">
+                    <div>&gt; System initialized.</div>
+                    <div>&gt; MCP connected.</div>
+                    <div>&gt; Knowledge base ready.</div>
                 </div>
             </div>
         </aside>
-
-        <main class="app-container">
-            <header role="banner">
-                <h1>LogicFlow <span>Code Review Assistant</span></h1>
-                <p>Your intelligent context-aware developer partner built for PromptWars Virtual</p>
-            </header>
-        
-        <div class="context-panel glass" role="toolbar" aria-label="Settings and Actions">
-            <h2>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg> 
-                Execution Context
-            </h2>
-            <div style="display: flex; gap: 10px;">
-                <button id="export-history-btn" class="export-btn" style="position:static; opacity:1;" aria-label="Export chat history to CSV" tabindex="0">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Export Session
-                </button>
-                <select id="context-selector" aria-label="Select execution context" tabindex="0">
-                    <option value="General Developer Support">General Developer Support</option>
-                    <option value="Code Review & Optimization">Code Review & Optimization</option>
-                    <option value="System Architecture Design">System Architecture Design</option>
-                    <option value="Debugging & Error Resolution">Debugging & Error Resolution</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="chat-container glass" id="chat-container" role="log" aria-live="polite" aria-atomic="false">
-            <div class="message system" role="article">
-                <div class="avatar" aria-hidden="true">⚡</div>
-                <div class="bubble">Welcome to LogicFlow! Select your interaction context above and let me know how I can help you build today.</div>
-            </div>
-        </div>
-
-        <div class="input-panel glass" style="display: flex; flex-direction: column; gap: 0.5rem; padding: 1rem 1.5rem;">
-            <input type="text" id="github-url" placeholder="Optional: Paste a GitHub file URL (e.g. https://github.com/.../file.js) to review" autocomplete="off" aria-label="Optional GitHub raw file URL" style="background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 8px; color: white; padding: 0.6rem 1rem; font-family: inherit; font-size: 0.95rem; outline: none; transition: border-color 0.2s;" tabindex="0">
-            <div class="input-container" style="padding: 0;">
-                <input type="text" id="user-input" placeholder="Describe your issue or write a prompt..." autocomplete="off" aria-label="Chat input message" tabindex="0">
-                <button id="send-btn" aria-label="Send message" tabindex="0">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                </button>
-            </div>
-        </div>
-    </main>
     </div>
 
     <script src="app.js"></script>

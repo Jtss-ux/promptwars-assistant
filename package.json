@@ -1,21 +1,35 @@
 {
-  "name": "promptwars-assistant",
+  "name": "logicflow-code-review-assistant",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "LogicFlow: AI-powered Code Review Assistant built with Google Gemini and Vertex AI. Context-aware developer support for code review, architecture design, and debugging.",
+  "main": "server.js",
   "scripts": {
-    "test": "node --test"
+    "start": "node server.js",
+    "test": "node --test",
+    "dev": "node server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "gemini",
+    "vertex-ai",
+    "code-review",
+    "ai-assistant",
+    "cloud-run",
+    "promptwars"
+  ],
+  "author": "LogicFlow Team",
+  "license": "MIT",
   "type": "commonjs",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {
     "@google-cloud/vertexai": "^1.11.0",
     "@google/genai": "^1.50.0",
+    "compression": "^1.8.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "express-rate-limit": "^8.3.2"
+    "express-rate-limit": "^8.3.2",
+    "helmet": "^8.1.0"
   }
 }
