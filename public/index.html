@@ -18,36 +18,44 @@
     </div>
     
     <main class="app-container">
-        <header>
+        <header role="banner">
             <h1>LogicFlow <span>Code Review Assistant</span></h1>
             <p>Your intelligent context-aware developer partner built for PromptWars Virtual</p>
         </header>
         
-        <div class="context-panel glass">
+        <div class="context-panel glass" role="toolbar" aria-label="Settings and Actions">
             <h2>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg> 
                 Execution Context
             </h2>
-            <select id="context-selector">
-                <option value="General Developer Support">General Developer Support</option>
-                <option value="Code Review & Optimization">Code Review & Optimization</option>
-                <option value="System Architecture Design">System Architecture Design</option>
-                <option value="Debugging & Error Resolution">Debugging & Error Resolution</option>
-            </select>
+            <div style="display: flex; gap: 10px;">
+                <button id="export-history-btn" class="export-btn" style="position:static; opacity:1;" aria-label="Export chat history to CSV" tabindex="0">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Export Session
+                </button>
+                <select id="context-selector" aria-label="Select execution context" tabindex="0">
+                    <option value="General Developer Support">General Developer Support</option>
+                    <option value="Code Review & Optimization">Code Review & Optimization</option>
+                    <option value="System Architecture Design">System Architecture Design</option>
+                    <option value="Debugging & Error Resolution">Debugging & Error Resolution</option>
+                </select>
+            </div>
         </div>
 
-        <div class="chat-container glass" id="chat-container">
-            <div class="message system">
-                <div class="avatar">⚡</div>
+        <div class="chat-container glass" id="chat-container" role="log" aria-live="polite" aria-atomic="false">
+            <div class="message system" role="article">
+                <div class="avatar" aria-hidden="true">⚡</div>
                 <div class="bubble">Welcome to LogicFlow! Select your interaction context above and let me know how I can help you build today.</div>
             </div>
         </div>
 
-        <div class="input-container glass">
-            <input type="text" id="user-input" placeholder="Describe your issue or write a prompt..." autocomplete="off">
-            <button id="send-btn">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-            </button>
+        <div class="input-panel glass" style="display: flex; flex-direction: column; gap: 0.5rem; padding: 1rem 1.5rem;">
+            <input type="text" id="github-url" placeholder="Optional: Paste a GitHub file URL (e.g. https://github.com/.../file.js) to review" autocomplete="off" aria-label="Optional GitHub raw file URL" style="background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 8px; color: white; padding: 0.6rem 1rem; font-family: inherit; font-size: 0.95rem; outline: none; transition: border-color 0.2s;" tabindex="0">
+            <div class="input-container" style="padding: 0;">
+                <input type="text" id="user-input" placeholder="Describe your issue or write a prompt..." autocomplete="off" aria-label="Chat input message" tabindex="0">
+                <button id="send-btn" aria-label="Send message" tabindex="0">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                </button>
+            </div>
         </div>
     </main>
 

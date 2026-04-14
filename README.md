@@ -24,6 +24,13 @@ The application consists of a lightweight server-side integration utilizing **Go
 4. The backend generates context-aware logic and queries the Gemini 2.5 Flash model.
 5. The frontend safely renders the assistant's robust markdown response, displaying code blocks naturally.
 
+## 🧪 Automated Testing
+LogicFlow is equipped with reliable End-to-End (E2E) testing powered by the native `node:test` runner. The test suite automatically validates UI responses, API status codes, error handling (400 Bad Requests), and live AI integrations.
+To execute the tests locally:
+```bash
+npm test
+```
+
 ## 📝 Assumptions Made
 - The user requires instant visual feedback, minimizing interaction friction.
 - The assistant operates as a standalone service designed for Cloud Run.

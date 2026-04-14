@@ -1,24 +1,34 @@
 document.addEventListener('DOMContentLoaded', () => {
     const chatContainer = document.getElementById('chat-container');
     const userInput = document.getElementById('user-input');
+    const githubInput = document.getElementById('github-url');
     const sendBtn = document.getElementById('send-btn');
     const contextSelector = document.getElementById('context-selector');
+    const exportBtn = document.getElementById('export-history-btn');
+
+    let chatHistory = []; // For local CSV export
 
     // Create typing indicator element
     const typingIndicator = document.createElement('div');
     typingIndicator.className = 'typing-indicator message system';
-    typingIndicator.innerHTML = '<div class="avatar">⚡</div><div class="bubble" style="display:flex;align-items:center;gap:6px;height:35px;"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
+    typingIndicator.setAttribute('role', 'status');
+    typingIndicator.innerHTML = '<div class="avatar" aria-hidden="true">⚡</div><div class="bubble" style="display:flex;align-items:center;gap:6px;height:35px;"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
     
     function appendMessage(sender, text, isMarkdown = false) {
+        chatHistory.push({ sender, text, timestamp: new Date().toISOString() });
+
         const msgDiv = document.createElement('div');
         msgDiv.className = `message ${sender}`;
+        msgDiv.setAttribute('role', 'article');
         
         const avatar = document.createElement('div');
         avatar.className = 'avatar';
+        avatar.setAttribute('aria-hidden', 'true');
         avatar.textContent = sender === 'user' ? 'U' : '⚡';
 
         const bubble = document.createElement('div');
         bubble.className = 'bubble';
+        bubble.setAttribute('tabindex', '0'); // focusable for screen readers
         
         if (isMarkdown) {
             bubble.innerHTML = marked.parse(text);
@@ -65,24 +75,49 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 50);
     }
 
+    function getRawGithubUrl(url) {
+        if (!url.includes('github.com')) return url;
+        return url.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/');
+    }
+
     async function sendMessage() {
         const text = userInput.value.trim();
-        if (!text) return;
+        const githubUrl = githubInput.value.trim();
+        if (!text && !githubUrl) return; // Prevent empty sends
         
         const context = contextSelector.value;
         
-        appendMessage('user', text);
+        let displayMessage = text;
+        if (githubUrl) displayMessage += `\n[Attached GitHub File: ${githubUrl}]`;
+        appendMessage('user', displayMessage);
+        
         userInput.value = '';
+        githubInput.value = '';
         
         chatContainer.appendChild(typingIndicator);
         typingIndicator.classList.add('active');
         scrollToBottom();
 
+        let githubCode = '';
+        if (githubUrl) {
+            try {
+                const rawUrl = getRawGithubUrl(githubUrl);
+                const codeRes = await fetch(rawUrl);
+                if (codeRes.ok) {
+                    githubCode = await codeRes.text();
+                } else {
+                    console.warn("Failed to fetch Github Raw URL.");
+                }
+            } catch (e) {
+                console.error("Github Fetch Error:", e);
+            }
+        }
+
         try {
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: text, context })
+                body: JSON.stringify({ message: text || "Please review the attached code.", context, githubCode })
             });
             
             const data = await response.json();
@@ -109,5 +144,25 @@ document.addEventListener('DOMContentLoaded', () => {
     sendBtn.addEventListener('click', sendMessage);
     userInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') sendMessage();
+    });
+    githubInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendMessage();
+    });
+
+    // CSV Export Logic
+    exportBtn.addEventListener('click', () => {
+        if (chatHistory.length === 0) return alert("Chat history is empty.");
+        const header = "Timestamp,Sender,Message\n";
+        const csvContent = chatHistory.map(row => {
+            const escapedText = row.text.replace(/"/g, '""');
+            return `"${row.timestamp}","${row.sender}","${escapedText}"`;
+        }).join("\n");
+        const blob = new Blob([header + csvContent], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `LogicFlow-History-${Date.now()}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
     });
 });

@@ -1,12 +1,26 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// ─── Security: Rate Limiting ──────────────────────────────────────────────────
+const chatLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 50, // limit each IP to 50 requests per windowMs
+  message: { error: 'Too many requests, please try again later.' }
+});
+
+// A basic HTML sanitization helper to stop XSS
+function sanitizeInput(str) {
+  if (!str) return '';
+  return str.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 
 // ─── Gemini SDK Init ─────────────────────────────────────────────────────────
 // Uses GEMINI_API_KEY env var (set as a Cloud Run secret).
@@ -42,12 +56,17 @@ async function getAIResponse(prompt) {
 }
 
 // ─── Chat Endpoint ────────────────────────────────────────────────────────────
-app.post('/api/chat', async (req, res) => {
+app.post('/api/chat', chatLimiter, async (req, res) => {
   try {
-    const { message, context } = req.body;
+    let { message, context, githubCode } = req.body;
     if (!message) return res.status(400).json({ error: 'message is required' });
 
-    const prompt = `You are **LogicFlow: Code Review Assistant**, a senior software engineer and system architect AI.
+    // Sanitize inputs
+    message = sanitizeInput(message);
+    context = sanitizeInput(context);
+    if (githubCode) githubCode = sanitizeInput(githubCode);
+
+    let prompt = `You are **LogicFlow: Code Review Assistant**, a senior software engineer and system architect AI.
 Your current session context: **${context || 'General Developer Support'}**.
 User query: "${message}"
 
@@ -59,6 +78,10 @@ When providing 'General Developer Support', always strongly adhere to and explic
 - Document your decision rationale, not just the code
 
 Respond with expert, actionable advice in Markdown format. Include relevant code snippets, complexity analysis, best practices and concrete next steps. Be specific — never give a generic answer.`;
+
+    if (githubCode) {
+      prompt += `\n\n**SUPPLIED GITHUB CODE TO REVIEW:**\n\`\`\`\n${githubCode}\n\`\`\`\nPlease review the above code directly based on the user's query.`;
+    }
 
     const reply = await getAIResponse(prompt);
     res.json({ reply });
