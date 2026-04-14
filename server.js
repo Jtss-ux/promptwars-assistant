@@ -22,10 +22,10 @@ async function getAIResponse(prompt) {
     const { GoogleGenAI } = require('@google/genai');
     if (!genAI) genAI = new GoogleGenAI({ apiKey });
     const response = await genAI.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'models/gemini-2.5-flash',
       contents: prompt,
     });
-    return response.text();
+    return response.candidates[0].content.parts[0].text;
   } else {
     // Path 2: Vertex AI (Cloud Run Service Account – ADC)
     const { VertexAI } = require('@google-cloud/vertexai');
