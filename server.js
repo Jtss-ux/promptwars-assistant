@@ -274,10 +274,11 @@ Current session context: ${context}.
 User query: "${message}"
 
 CRITICAL RESPONSE RULES:
-- If the user says "hi", "hello", "hey", or asks a simple one-liner question, reply in 1-3 sentences MAX. No lists, no code blocks.
-- Only give detailed markdown responses with code snippets, bullet points, and analysis when the user explicitly asks for a code review, debugging help, or technical deep-dive.
-- Always match the response length to the complexity of the question. Short question = short answer.
-- Never pad responses with generic advice unless specifically asked.`;
+- ALWAYS provide answers strictly to the point. Stop immediately once the question is answered.
+- ONLY elaborate or provide explanation when explicitly asked by the user.
+- AVOID giving unnecessary explanations, boilerplate text, or generic advice.
+- If the user asks a simple question (e.g., "how to be a data analyst"), give a concise 2-3 sentence answer/list without filler text.
+- Match the response length exactly to the complexity of the question. Short question = short direct answer.`;
 
     if (githubCode) {
       prompt += `\n\n**SUPPLIED GITHUB CODE TO REVIEW:**\n\`\`\`\n${githubCode}\n\`\`\`\nPlease review the above code directly based on the user's query.`;
