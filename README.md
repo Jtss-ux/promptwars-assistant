@@ -1,8 +1,8 @@
-# LogicFlow Assistant 🤖
+# LogicFlow: Code Review Assistant 🤖
 
 **PromptWars Virtual Submission**
 
-LogicFlow Assistant is a smart, dynamic AI assistant designed to help developers contextually solve problems, review code, and design system architectures. By adapting to the selected "Execution Context," LogicFlow provides tailored, intelligent responses powered by Google's Vertex AI / Gemini ecosystem.
+LogicFlow: Code Review Assistant is a smart, dynamic AI assistant designed to help developers contextually solve coding problems, review code, and design system architectures. By adapting to the selected "Execution Context," LogicFlow provides tailored, intelligent responses powered by Google's Vertex AI / Gemini ecosystem.
 
 ## 🚀 The Vertical: Developer Productivity & Mentorship
 LogicFlow targets the **Developer Productivity** vertical. The chosen persona is an "Expert AI Developer and System Architect." It acts logically based on the user's selected context:

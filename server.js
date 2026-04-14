@@ -15,7 +15,7 @@ try {
     project: process.env.GOOGLE_CLOUD_PROJECT || 'gen-lang-client-0486189266',
     location: 'us-central1'
   });
-  generativeModel = ai.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  generativeModel = ai.getGenerativeModel({ model: 'gemini-1.5-flash-001' });
 } catch (e) {
   console.warn("Failed to initialize VertexAI:", e.message);
 }
@@ -24,15 +24,15 @@ app.post('/api/chat', async (req, res) => {
     try {
         const { message, context } = req.body;
         
-        const prompt = `You are LogicFlow Assistant, an AI expert developer and task solver. 
+        const prompt = `You are LogicFlow: Code Review Assistant, an expert developer and system architect. 
 Your current interaction context is: ${context || 'General inquiry'}.
 The user has provided the following input: "${message}".
 
-Please provide a helpful, intelligent, and concise response formatted in Markdown. Focus on actionable advice or code snippets if relevant.`;
+Please provide a helpful, intelligent, subject-specific, and concise response formatted in Markdown. Focus on actionable code optimization, logical explanations, and best practices.`;
 
         if (!generativeModel) {
-             return res.json({ 
-                reply: `I am currently running in offline mock mode (AI SDK Initialization Failed).\n\n**Here is a simulated response based on your context [${context}]:**\n\nI understand you are asking about: *${message}*.\nAs LogicFlow Assistant, I recommend breaking down your problem into smaller functional blocks to tackle it efficiently.` 
+            return res.json({ 
+                reply: `**LogicFlow Offline Execution**: I understand you are asking about: *${message}*.\nAs LogicFlow: Code Review Assistant, my immediate advice is to modularize your code into functional components and ensure you measure Big-O complexity for any nested operations to avoid bottlenecks. (Vertex AI SDK Initialization required for detailed dynamic analysis).` 
             });
         }
 
@@ -44,7 +44,7 @@ Please provide a helpful, intelligent, and concise response formatted in Markdow
         } catch (aiError) {
             console.error('AI SDK Error:', aiError);
             res.json({ 
-                reply: `I am currently running in offline mock mode (Vertex AI Error: ${aiError.message}).\n\n**Here is a simulated response based on your context [${context}]:**\n\nI understand you are asking about: *${message}*.\nAs LogicFlow Assistant, I recommend breaking down your problem into smaller functional blocks to tackle it efficiently.` 
+                reply: `**LogicFlow Offline Fallback**: (Vertex AI returning ${aiError.message}).\n\nI understand you are asking about: *${message}*.\nAs LogicFlow: Code Review Assistant, I strongly recommend checking your nested loop complexity. You can often break big $O(N^2)$ loops by using HashMaps $O(1)$ lookup or applying vectorized operations via NumPy/Pandas in Python.` 
             });
         }
     } catch (err) {

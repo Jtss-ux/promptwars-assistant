@@ -6,7 +6,7 @@ Here is the prepared text for your PromptWars Virtual LinkedIn post. Make sure t
 
 Just built my first intent-driven application for PromptWars: Virtual using Google Antigravity! 🚀
 
-I tackled the Developer Productivity vertical and created **LogicFlow Assistant**—a smart, context-aware AI partner that acts as an expert code reviewer and system architect depending on your execution context.
+I tackled the Developer Productivity vertical and created **LogicFlow: Code Review Assistant**—a smart, context-aware AI partner that acts as an expert code reviewer and system architect depending on your execution context.
 
 The coolest part? 
 ✨ Zero bloated frameworks. Built with a pristine dark-mode glassmorphism UI using Vanilla HTML/CSS/JS.
