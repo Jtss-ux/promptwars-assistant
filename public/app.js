@@ -101,15 +101,30 @@ document.addEventListener('DOMContentLoaded', () => {
         let githubCode = '';
         if (githubUrl) {
             try {
+                // Check if it's a repository root instead of a file
+                if (githubUrl.includes('github.com') && !githubUrl.includes('/blob/')) {
+                     appendMessage('system', '⚠️ **Notice:** You provided a GitHub repository root. For this tool to fetch and review code, please provide a direct link to a specific file (e.g., `https://github.com/user/repo/blob/main/server.js`).', true);
+                     typingIndicator.classList.remove('active');
+                     if (typingIndicator.parentNode) chatContainer.removeChild(typingIndicator);
+                     return;
+                }
+
                 const rawUrl = getRawGithubUrl(githubUrl);
                 const codeRes = await fetch(rawUrl);
                 if (codeRes.ok) {
                     githubCode = await codeRes.text();
                 } else {
-                    console.warn("Failed to fetch Github Raw URL.");
+                    appendMessage('system', `⚠️ **Notice:** Failed to fetch the GitHub file. Make sure the repository is public and the URL is valid. (Status: ${codeRes.status})`, true);
+                    typingIndicator.classList.remove('active');
+                    if (typingIndicator.parentNode) chatContainer.removeChild(typingIndicator);
+                    return;
                 }
             } catch (e) {
                 console.error("Github Fetch Error:", e);
+                appendMessage('system', `⚠️ **Notice:** Network error while fetching the GitHub URL.`, true);
+                typingIndicator.classList.remove('active');
+                if (typingIndicator.parentNode) chatContainer.removeChild(typingIndicator);
+                return;
             }
         }
 
