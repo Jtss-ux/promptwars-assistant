@@ -37,7 +37,6 @@ require('dotenv').config();
 // ─── Google Cloud Utility Modules ────────────────────────────────────────────
 const { saveConversationTurn } = require('./src/utils/firestore');
 const { recordChatRequest, recordAiLatency } = require('./src/utils/metrics');
-const { VertexAI } = require('@google-cloud/vertexai');
 const { ErrorReporting } = require('@google-cloud/error-reporting');
 const { getSecret } = require('./src/utils/secrets');
 
@@ -401,8 +400,8 @@ async function getAIResponse(prompt) {
   }
 
   // Path 2: Vertex AI (Cloud Run Service Account — ADC)
-  const { VertexAI } = require('@google-cloud/vertexai');
-  const vertex = new VertexAI({ project, location: 'us-central1' });
+  const { VertexAI: VertexAIClient } = require('@google-cloud/vertexai');
+  const vertex = new VertexAIClient({ project, location: 'us-central1' });
   const model = vertex.getGenerativeModel({ model: 'gemini-2.0-flash-001' });
 
   log('INFO', 'Using Vertex AI with ADC.', { project });
@@ -656,12 +655,16 @@ app.get('/api/version', (_req, res) => {
       'Google Cloud Firestore             — conversation history persistence',
       'Google Cloud Secret Manager       — secure API-key retrieval',
       'Google Cloud Monitoring            — custom observability metrics',
+      'Google Cloud Error Reporting      — automatic crash analysis middleware',
     ],
     cacheEntries: cacheSize(),
     runtime: 'Node.js',
     runtimeVersion: process.version,
   });
 });
+
+// Ensure Error Reporting middleware is attached before the global handler
+app.use(errors.express);
 
 // ─── Global Error Handler ─────────────────────────────────────────────────────
 
