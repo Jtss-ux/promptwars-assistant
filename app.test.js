@@ -563,3 +563,162 @@ describe('API Integration Tests', { concurrency: false }, () => {
     }
   });
 });
+
+// ── Unit Tests: Cache Module ───────────────────────────────────────────────────
+
+describe('Unit Tests: Cache Module (src/utils/cache.js)', () => {
+  const { getCacheKey, getCache, setCache, cacheSize, CACHE_TTL_MS, MAX_CACHE_ENTRIES } = require('./src/utils/cache');
+
+  test('getCacheKey returns null for messages over 200 chars', () => {
+    const longMsg = 'a'.repeat(201);
+    assert.strictEqual(getCacheKey('ctx', longMsg), null);
+  });
+
+  test('getCacheKey returns null for empty message', () => {
+    assert.strictEqual(getCacheKey('ctx', ''), null);
+  });
+
+  test('getCacheKey normalises to lowercase and trims whitespace', () => {
+    const k1 = getCacheKey('Code Review', '  Hello World  ');
+    const k2 = getCacheKey('Code Review', 'hello world');
+    assert.strictEqual(k1, k2, 'Keys must be identical after normalisation');
+  });
+
+  test('getCacheKey includes context prefix in key', () => {
+    const key = getCacheKey('Architecture', 'hello');
+    assert.ok(key.startsWith('Architecture::'), 'Key must include context prefix');
+  });
+
+  test('setCache and getCache round-trip returns stored data', () => {
+    const key = getCacheKey('test-ctx', 'unit test hit');
+    setCache(key, 'cached reply', { elapsed: '0.10', totalTokens: 42 });
+    const result = getCache(key);
+    assert.ok(result !== null, 'Cache hit must return data');
+    assert.strictEqual(result.reply, 'cached reply');
+    assert.strictEqual(result.stats.totalTokens, 42);
+  });
+
+  test('getCache returns null for unknown key', () => {
+    assert.strictEqual(getCache('nonexistent::key'), null);
+  });
+
+  test('getCache returns null for null key', () => {
+    assert.strictEqual(getCache(null), null);
+  });
+
+  test('cacheSize returns a non-negative integer', () => {
+    assert.ok(typeof cacheSize() === 'number');
+    assert.ok(cacheSize() >= 0);
+  });
+
+  test('CACHE_TTL_MS is 5 minutes (300000 ms)', () => {
+    assert.strictEqual(CACHE_TTL_MS, 5 * 60 * 1000);
+  });
+
+  test('MAX_CACHE_ENTRIES is 100', () => {
+    assert.strictEqual(MAX_CACHE_ENTRIES, 100);
+  });
+});
+
+// ── Unit Tests: Sanitize Module ────────────────────────────────────────────────
+
+describe('Unit Tests: Sanitize Module (src/utils/sanitize.js)', () => {
+  const { sanitizeInput, isSafeForPrompt } = require('./src/utils/sanitize');
+
+  test('sanitizeInput escapes < and > brackets', () => {
+    const out = sanitizeInput('<b>bold</b>');
+    assert.ok(out.includes('&lt;') && out.includes('&gt;'));
+  });
+
+  test('sanitizeInput escapes & ampersand', () => {
+    assert.ok(sanitizeInput('a & b').includes('&amp;'));
+  });
+
+  test('sanitizeInput returns empty string for non-string input', () => {
+    assert.strictEqual(sanitizeInput(42), '');
+    assert.strictEqual(sanitizeInput(null), '');
+  });
+
+  test('isSafeForPrompt returns false for <script> injection', () => {
+    assert.strictEqual(isSafeForPrompt('<script>alert(1)</script>'), false);
+  });
+
+  test('isSafeForPrompt returns false for javascript: URI', () => {
+    assert.strictEqual(isSafeForPrompt('javascript:void(0)'), false);
+  });
+
+  test('isSafeForPrompt returns true for normal code query', () => {
+    assert.strictEqual(isSafeForPrompt('How do I sort an array in Python?'), true);
+  });
+
+  test('isSafeForPrompt returns false for non-string input', () => {
+    assert.strictEqual(isSafeForPrompt(null), false);
+    assert.strictEqual(isSafeForPrompt(undefined), false);
+  });
+});
+
+// ── Integration Tests: /api/version endpoint ──────────────────────────────────
+
+describe('Integration Tests: /api/version', () => {
+  let server;
+  let BASE_URL;
+
+  before(async () => {
+    const { app } = require('./server');
+    const PORT = 8083;
+    BASE_URL = `http://localhost:${PORT}`;
+    await new Promise((resolve) => {
+      server = app.listen(PORT, resolve);
+    });
+  });
+
+  after(async () => {
+    await new Promise((resolve) => server.close(resolve));
+  });
+
+  test('GET /api/version returns 200 with JSON', async () => {
+    const res = await fetch(`${BASE_URL}/api/version`);
+    assert.strictEqual(res.status, 200);
+    assert.ok(res.headers.get('content-type').includes('application/json'));
+  });
+
+  test('GET /api/version includes name field', async () => {
+    const body = await (await fetch(`${BASE_URL}/api/version`)).json();
+    assert.strictEqual(body.name, 'logicflow-code-review-assistant');
+  });
+
+  test('GET /api/version lists at least 8 Google Services', async () => {
+    const body = await (await fetch(`${BASE_URL}/api/version`)).json();
+    assert.ok(Array.isArray(body.googleServices), 'googleServices must be an array');
+    assert.ok(body.googleServices.length >= 8, `Must list ≥8 Google Services, got ${body.googleServices.length}`);
+  });
+
+  test('GET /api/version includes Firestore in services', async () => {
+    const body = await (await fetch(`${BASE_URL}/api/version`)).json();
+    const hasFirestore = body.googleServices.some(s => s.toLowerCase().includes('firestore'));
+    assert.ok(hasFirestore, 'googleServices must reference Firestore');
+  });
+
+  test('GET /api/version includes Secret Manager in services', async () => {
+    const body = await (await fetch(`${BASE_URL}/api/version`)).json();
+    const hasSecretManager = body.googleServices.some(s => s.toLowerCase().includes('secret'));
+    assert.ok(hasSecretManager, 'googleServices must reference Secret Manager');
+  });
+
+  test('GET /api/version includes Cloud Monitoring in services', async () => {
+    const body = await (await fetch(`${BASE_URL}/api/version`)).json();
+    const hasMonitoring = body.googleServices.some(s => s.toLowerCase().includes('monitoring'));
+    assert.ok(hasMonitoring, 'googleServices must reference Cloud Monitoring');
+  });
+
+  test('GET /api/version includes cacheEntries field', async () => {
+    const body = await (await fetch(`${BASE_URL}/api/version`)).json();
+    assert.ok(typeof body.cacheEntries === 'number', 'cacheEntries must be a number');
+  });
+
+  test('GET /api/version includes runtimeVersion field', async () => {
+    const body = await (await fetch(`${BASE_URL}/api/version`)).json();
+    assert.ok(typeof body.runtimeVersion === 'string');
+    assert.ok(body.runtimeVersion.startsWith('v'));
+  });
+});
