@@ -33,6 +33,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "@google-cloud/error-reporting": "^3.0.5",
     "@google-cloud/firestore": "^8.5.0",
     "@google-cloud/monitoring": "^5.3.1",
     "@google-cloud/secret-manager": "^6.1.1",

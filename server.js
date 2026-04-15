@@ -10,6 +10,7 @@
  *  - Google Cloud Firestore            — conversation history persistence
  *  - Google Cloud Secret Manager       — secure API-key retrieval
  *  - Google Cloud Monitoring           — custom metrics & observability
+ *  - Google Cloud Error Reporting      — automatic crash analysis
  *
  * @module server
  * @requires express
@@ -36,6 +37,8 @@ require('dotenv').config();
 // ─── Google Cloud Utility Modules ────────────────────────────────────────────
 const { saveConversationTurn } = require('./src/utils/firestore');
 const { recordChatRequest, recordAiLatency } = require('./src/utils/metrics');
+const { VertexAI } = require('@google-cloud/vertexai');
+const { ErrorReporting } = require('@google-cloud/error-reporting');
 const { getSecret } = require('./src/utils/secrets');
 
 // Note: additional modular implementations live in:
@@ -71,6 +74,15 @@ class AppError extends Error {
 // ─── Express App Initialization ───────────────────────────────────────────────
 
 const app = express();
+
+// ── Google Cloud Error Reporting Client ───────────────────
+const errors = new ErrorReporting({
+  reportMode: process.env.NODE_ENV === 'test' ? 'never' : 'always',
+  serviceContext: {
+    service: 'logicflow-assistant',
+    version: '1.0.0',
+  },
+});
 
 // ─── Security Middleware ──────────────────────────────────────────────────────
 
@@ -256,6 +268,8 @@ app.use((req, res, next) => {
     // Only set if headers haven't been sent yet (guards against double-end)
     if (!res.headersSent) {
       res.setHeader('X-Response-Time', `${elapsedMs}ms`);
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('X-Frame-Options', 'SAMEORIGIN');
     }
     return originalEnd(...args);
   };

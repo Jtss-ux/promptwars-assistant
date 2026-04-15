@@ -1,0 +1,118 @@
+openapi: 3.0.3
+info:
+  title: LogicFlow Assistant API
+  description: AI-powered developer assistant providing code reviews, architectural advice, and debugging support.
+  version: 1.0.0
+  contact:
+    name: LogicFlow Team
+    url: https://logicflow-513799679220.us-central1.run.app/
+servers:
+  - url: https://logicflow-513799679220.us-central1.run.app/
+    description: Production Environment (Cloud Run)
+  - url: http://localhost:8080
+    description: Local Development
+
+paths:
+  /api/chat:
+    post:
+      summary: Submit a developer query for AI analysis
+      description: Routes the query through context-specific prompts to Google Gemini or Vertex AI.
+      security:
+        - RateLimiting: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - message
+              properties:
+                message:
+                  type: string
+                  description: The developer's question or prompt
+                  maxLength: 5000
+                context:
+                  type: string
+                  description: The specialized assistant mode
+                  enum: ["Code Review & Optimization", "System Architecture Design", "Debugging & Error Resolution"]
+                  default: "Code Review & Optimization"
+                githubCode:
+                  type: string
+                  description: Optional code snippet or file content for review
+                  maxLength: 50000
+      responses:
+        '200':
+          description: Successful AI response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reply:
+                    type: string
+                    description: Markdown-formatted AI response
+                  stats:
+                    type: object
+                    properties:
+                      elapsed:
+                        type: string
+                      promptTokens:
+                        type: integer
+                      outputTokens:
+                        type: integer
+                      totalTokens:
+                        type: integer
+        '400':
+          description: Validation error or unsafe content detected
+        '429':
+          description: Quota exceeded or rate limited
+        '500':
+          description: Server error (gracefully handled with fallback response)
+
+  /health:
+    get:
+      summary: Liveness and readiness probe
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+                  uptime:
+                    type: number
+                  node:
+                    type: string
+
+  /api/version:
+    get:
+      summary: Get system metadata and active Google Services
+      responses:
+        '200':
+          description: System metadata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  version:
+                    type: string
+                  googleServices:
+                    type: array
+                    items:
+                      type: string
+
+components:
+  securitySchemes:
+    RateLimiting:
+      type: apiKey
+      in: header
+      name: XSRF-TOKEN
+      description: Client-side rate limiting and origin validation enforced by server.
