@@ -67,9 +67,11 @@
             <div id="sr-announcer" class="sr-only" aria-live="assertive" aria-atomic="true" role="status"></div>
 
             <div class="input-panel glass" role="form" aria-label="Chat input form">
-                <label for="github-url" class="sr-only">Optional GitHub raw file URL</label>
-                <input type="url" id="github-url" placeholder="Optional: Paste a GitHub file URL..." autocomplete="off" aria-describedby="github-url-hint" tabindex="0">
-                <span id="github-url-hint" class="sr-only">Paste a direct link to a specific file on GitHub for code review</span>
+                <div role="search" aria-label="GitHub File Fetch">
+                    <label for="github-url" class="sr-only">Optional GitHub raw file URL</label>
+                    <input type="url" id="github-url" placeholder="Optional: Paste a GitHub file URL..." autocomplete="off" aria-describedby="github-url-hint" tabindex="0">
+                    <span id="github-url-hint" class="sr-only">Paste a direct link to a specific file on GitHub for code review</span>
+                </div>
 
                 <div class="input-container" style="padding: 0;">
                     <label for="user-input" class="sr-only">Describe your issue or write a prompt</label>

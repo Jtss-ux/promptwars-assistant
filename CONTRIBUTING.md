@@ -30,14 +30,14 @@ npm run dev
 ## Running Tests
 
 ```bash
-# Full test suite (63 tests)
+# Full test suite (88 tests)
 npm test
 
 # Watch mode
 npm run test:watch
 ```
 
-All 63 tests must pass before submitting a PR.
+All 88 tests must pass before submitting a PR.
 
 ## Linting
 
@@ -52,13 +52,19 @@ npm run lint:fix    # Auto-fix where possible
 logicflow-assistant/
 ├── server.js              # Express app entry point
 ├── src/
-│   ├── utils/
-│   │   ├── cache.js       # In-memory response cache (TTL + LRU)
-│   │   ├── firestore.js   # Google Cloud Firestore integration
-│   │   ├── logger.js      # Cloud Logging-compatible structured logger
-│   │   ├── metrics.js     # Google Cloud Monitoring custom metrics
-│   │   ├── sanitize.js    # Input sanitisation & prompt safety
-│   │   └── secrets.js     # Google Cloud Secret Manager integration
+│   ├── middleware/
+│   │   └── security.js    # Helmet, CORS, and rate limiting
+│   ├── routes/
+│   │   ├── chat.js        # POST /api/chat router (AI integration)
+│   │   └── health.js      # GET /health & /api/version routes
+│   └── utils/
+│       ├── ai.js          # Gemini & Vertex AI client abstraction
+│       ├── cache.js       # In-memory response cache (TTL + LRU)
+│       ├── firestore.js   # Google Cloud Firestore integration
+│       ├── logger.js      # Cloud Logging-compatible structured logger
+│       ├── metrics.js     # Google Cloud Monitoring custom metrics
+│       ├── sanitize.js    # Input sanitisation & prompt safety
+│       └── secrets.js     # Google Cloud Secret Manager integration
 ├── public/
 │   ├── index.html         # Frontend UI
 │   ├── style.css          # Styles
@@ -80,7 +86,7 @@ logicflow-assistant/
 
 ## Pull Request Checklist
 
-- [ ] All 63 tests pass (`npm test`)
+- [ ] All 88 tests pass (`npm test`)
 - [ ] Lint is clean (`npm run lint`)
 - [ ] New features include tests
 - [ ] JSDoc added for new public functions
