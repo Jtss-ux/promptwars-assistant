@@ -1,175 +1,254 @@
-# LogicFlow: Code Review Assistant 🤖
+# LogicFlow: Code Review Assistant
 
-**PromptWars Virtual Submission**
+<div align="center">
 
-LogicFlow is an AI-powered, context-aware Code Review Assistant designed to help developers review code, debug issues, and architect systems — all through a conversational interface powered by **Google Gemini 2.5 Flash** with real-time **Google Search Grounding**.
+[![Tests](https://img.shields.io/badge/tests-88%20passing-brightgreen?style=for-the-badge&logo=node.js)](./app.test.js)
+[![Google Cloud](https://img.shields.io/badge/Google%20Cloud-8%20Services-4285F4?style=for-the-badge&logo=google-cloud)](./docs/ARCHITECTURE.md)
+[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-43853d?style=for-the-badge&logo=node.js)](https://nodejs.org)
+[![License](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](./LICENSE)
+[![Cloud Run](https://img.shields.io/badge/Cloud%20Run-Deployed-4285F4?style=for-the-badge&logo=google-cloud)](https://logicflow-513799679220.us-central1.run.app/)
+
+**An AI-powered code review assistant that provides context-aware feedback, architectural guidance, and real-time debugging support — powered by Google Gemini and 8 Google Cloud services.**
+
+[🚀 Live Demo](https://logicflow-513799679220.us-central1.run.app/) · [📖 Architecture](./docs/ARCHITECTURE.md) · [🤝 Contributing](./CONTRIBUTING.md)
+
+</div>
 
 ---
 
-## 🚀 The Vertical: Developer Productivity & Mentorship
+## ✨ Features
 
-LogicFlow targets the **Developer Productivity** vertical with an "Expert AI Developer" persona that adapts its behavior based on the user's selected execution context:
-
-| Context | Behavior |
+| Feature | Description |
 |---|---|
-| **General Developer Support** | Answers broad coding questions concisely |
-| **Code Review & Optimization** | Deep-dives into code quality, performance, and best practices |
-| **System Architecture Design** | Provides architecture patterns, SOLID principles, and scalability advice |
-| **Debugging & Error Resolution** | Systematic debugging strategies with structured logging guidance |
+| 🤖 **AI Code Review** | Context-aware reviews using Google Gemini 2.5 Flash |
+| 🔍 **GitHub Integration** | Paste any GitHub file URL for direct code analysis |
+| 💾 **Smart Caching** | 5-minute in-memory cache with LRU eviction (X-Cache header) |
+| 📊 **Conversation History** | Persistent storage via Google Cloud Firestore |
+| 🔒 **Secure by Default** | Helmet CSP, rate limiting, input validation, Secret Manager |
+| 📈 **Observability** | Cloud Logging + Cloud Monitoring custom metrics |
+| ♿ **Accessible** | WCAG 2.1 AA — ARIA landmarks, skip links, live regions |
+| ⚡ **Fast** | Gzip compression, static caching, X-Response-Time header |
 
----
-
-## ☁️ Google Services Used
-
-| Google Service | Role in LogicFlow |
-|---|---|
-| **Google Gemini 2.5 Flash** | Primary AI model for code review and developer assistance |
-| **Gemini 2.0 Flash (Vertex AI)** | Fallback AI model via Application Default Credentials on Cloud Run |
-| **Google Cloud Run** | Serverless container hosting with auto-scaling (0 → N instances) |
-| **Google Cloud Logging** | Structured JSON logs compatible with Cloud Logging severity levels |
-| **Google Search Grounding** | Real-time web search grounding to prevent AI hallucination |
-| **Vertex AI** | Enterprise AI platform used for ADC-authenticated AI requests |
-
----
-
-## 💡 Approach & Architecture
+## 🏗️ Architecture
 
 ```
-┌────────────────────────────────────────────────────────────┐
-│  Browser (Vanilla HTML/CSS/JS)                             │
-│  ├── Glassmorphism UI with dark-mode design                │
-│  ├── Markdown rendering (marked.js + highlight.js)         │
-│  ├── Session persistence (localStorage)                    │
-│  ├── Sidebar: Recent Chats, Tasks, Agent Log               │
-│  └── WCAG 2.1 AA accessible (skip-nav, ARIA, reduced motion)│
-└──────────────────────┬─────────────────────────────────────┘
-                       │ POST /api/chat
-┌──────────────────────▼─────────────────────────────────────┐
-│  Express.js Server (Node 20)                               │
-│  ├── Security: Helmet CSP, CORS, rate limiting, XSS guard  │
-│  ├── AppError class: clean HTTP error propagation          │
-│  ├── Performance: gzip compression, static caching         │
-│  ├── Structured JSON logging (Cloud Logging compatible)    │
-│  └── Graceful shutdown (SIGTERM + SIGINT handling)         │
-└──────────────────────┬─────────────────────────────────────┘
-                       │
-┌──────────────────────▼─────────────────────────────────────┐
-│  Google AI Services                                        │
-│  ├── Gemini 2.5 Flash (Developer API) + Search Grounding   │
-│  └── Vertex AI Gemini 2.0 Flash (Cloud Run ADC fallback)   │
-└────────────────────────────────────────────────────────────┘
+Browser → Google Cloud Run → [ Gemini API / Vertex AI ]
+                          → Google Cloud Firestore (conversation history)
+                          → Google Cloud Monitoring (custom metrics)
+                          → Google Cloud Logging (structured logs)
+                          → Google Secret Manager (API keys)
 ```
 
-### Key Design Decisions
+See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for the full system diagram.
 
-1. **Zero-Framework Frontend** — Vanilla HTML/CSS/JS keeps the payload under 50 KB while delivering a premium glassmorphism UI with micro-animations.
-2. **Dual AI Backend** — Supports both API-key and ADC authentication, automatically selecting the right path based on environment.
-3. **Google Search Grounding** — Prevents hallucinations by grounding AI responses with live web search results.
-4. **Defence-in-Depth Security** — Tuned CSP headers, HTML entity sanitization (display only), XSS content filtering, rate limiting, body size limits, and Content-Type validation.
-5. **Raw Prompt Integrity** — User messages are passed raw to the AI (not HTML-escaped) to preserve natural language and code semantics. Sanitization is applied only to log entries and display text.
+## 🔧 Google Cloud Services
 
----
+| # | Service | Purpose |
+|---|---|---|
+| 1 | **Google Gemini (gemini-2.5-flash)** | Primary AI inference with Search Grounding |
+| 2 | **Vertex AI (gemini-2.0-flash)** | Fallback with Application Default Credentials |
+| 3 | **Google Cloud Run** | Auto-scaling serverless container host |
+| 4 | **Google Cloud Logging** | Structured JSON log ingestion (severity, labels, httpRequest) |
+| 5 | **Google Search Grounding** | Real-time web-grounded AI responses |
+| 6 | **Google Cloud Firestore** | Conversation turn persistence & analytics |
+| 7 | **Google Cloud Secret Manager** | Secure API key retrieval (no plaintext in env) |
+| 8 | **Google Cloud Monitoring** | Custom metrics: `chat_requests_total`, `ai_latency_ms` |
 
-## 🛡️ Security Measures
+## 🚀 Quick Start
 
-| Layer | Implementation |
-|---|---|
-| **Content Security Policy** | Strict CSP: `default-src 'self'`, no `unsafe-eval`, approved CDN allowlist |
-| **HTTP Headers** | `helmet` sets X-Content-Type-Options, X-Frame-Options (SAMEORIGIN), HSTS |
-| **XSS Content Filter** | `isSafeForPrompt()` blocks `<script>` and `javascript:` injection in user input |
-| **Input Sanitization** | Server-side HTML entity escaping for log entries and error display text |
-| **Rate Limiting** | 50 requests per 15 min per IP via `express-rate-limit` |
-| **Body Size Limits** | 50 KB JSON body limit; 5,000 char message limit; 50,000 char code limit |
-| **Content-Type Validation** | Rejects non-JSON requests with HTTP 415 status |
-| **Container Security** | Non-root user (`USER node`) in Docker; multi-stage builds for minimal attack surface |
-| **Structured Error Handling** | `AppError` class provides clean HTTP status propagation without leaking internals |
+### Prerequisites
+- Node.js ≥ 18
+- A [Google Gemini API key](https://aistudio.google.com/app/apikey)
 
----
-
-## ♿ Accessibility (WCAG 2.1 AA)
-
-- **Skip Navigation** link for keyboard users
-- **ARIA landmarks** (`role="main"`, `role="complementary"`, `role="log"`)
-- **Live regions** (`aria-live="polite"`, `aria-live="assertive"`) for dynamic chat updates
-- **Screen reader announcements** for all user actions
-- **Keyboard shortcuts** — `Ctrl+/` to focus input, `Escape` to close sidebar
-- **Focus-visible indicators** with high-contrast outlines
-- **`prefers-reduced-motion`** media query disables animations for sensitive users
-- **Semantic HTML5** with proper heading hierarchy (`<h1>` → `<h3>`)
-- **`<label>` + `aria-describedby`** on all form inputs
-- **`aria-expanded`** on sidebar toggle button (dynamic state)
-
----
-
-## 🧪 Automated Testing
-
-LogicFlow uses the native `node:test` runner for zero-dependency, production-grade testing:
+### Local Development
 
 ```bash
-npm test
-```
+# Clone
+git clone https://github.com/Jtss-ux/promptwars-assistant.git
+cd promptwars-assistant
 
-### Test Coverage (~55 tests)
-
-| Category | Tests |
-|---|---|
-| **Unit: sanitizeInput()** | XSS, ampersands, quotes, non-string types, edge cases, long strings |
-| **Unit: isSafeForPrompt()** | Script injection, javascript: URI, empty string, natural code |
-| **Unit: AppError** | Status codes, message, inheritance, name property |
-| **Input Validation** | Missing/wrong type message, length limits, oversized code, XSS rejection |
-| **Content-Type** | text/plain, multipart, form-urlencoded rejection |
-| **Security Headers** | CSP presence, no unsafe-eval, X-Content-Type-Options, clickjacking protection |
-| **Cache Control** | no-store on AI API responses |
-| **Integration** | Health check, /api/version, static file serving, 404 handling |
-| **Accessibility** | ARIA landmarks, aria-live, aria-label, semantic elements |
-| **E2E** | Full Gemini AI round-trip with stats validation |
-
----
-
-## 🛠️ Local Development
-
-```bash
 # Install dependencies
 npm install
 
-# Create .env file
-echo "GEMINI_API_KEY=your_key_here" > .env
+# Configure environment
+cp .env.example .env
+# → Add your GEMINI_API_KEY to .env
 
-# Start development server
+# Start dev server
 npm run dev
-
-# Run tests
-npm test
+# → http://localhost:8080
 ```
 
----
-
-## 🐳 Docker & Cloud Run Deployment
+### Running Tests
 
 ```bash
-# Build container
-docker build -t logicflow .
+npm test                 # 88 tests, 0 failures
+npm run test:coverage    # With coverage report
+npm run lint             # ESLint (security rules)
+```
 
-# Run locally
-docker run -p 8080:8080 -e GEMINI_API_KEY=your_key logicflow
+## 📁 Project Structure
 
-# Deploy to Cloud Run
-gcloud run deploy logicflow \
+```
+logicflow-assistant/
+├── server.js                  # Express app entry point (all middleware + routes)
+├── app.test.js                # 88-test suite (Node.js native test runner)
+│
+├── src/
+│   └── utils/
+│       ├── cache.js           # In-memory response cache (TTL + LRU eviction)
+│       ├── firestore.js       # 🔵 Google Cloud Firestore integration
+│       ├── logger.js          # 🔵 Cloud Logging structured logger
+│       ├── metrics.js         # 🔵 Cloud Monitoring custom metrics
+│       ├── sanitize.js        # Input sanitisation & prompt-safety guards
+│       └── secrets.js         # 🔵 Google Cloud Secret Manager integration
+│
+├── public/
+│   ├── index.html             # Frontend UI (semantic HTML5 + ARIA)
+│   ├── style.css              # Glassmorphism dark-mode design system
+│   ├── app.js                 # Frontend JavaScript (fetch, rendering)
+│   └── manifest.json          # PWA web app manifest
+│
+├── docs/
+│   └── ARCHITECTURE.md        # System diagram + Google Services table
+│
+├── .github/
+│   └── workflows/
+│       └── ci.yml             # GitHub Actions CI (lint + test on push/PR)
+│
+├── .env.example               # Environment variable reference
+├── .eslintrc.json             # ESLint (security-focused rules)
+├── CONTRIBUTING.md            # Developer guide
+├── SECURITY.md                # Vulnerability disclosure policy
+└── Dockerfile                 # Cloud Run container definition
+```
+
+## 🛡️ Security
+
+- **Helmet.js** — CSP, HSTS, X-Content-Type-Options, X-Frame-Options
+- **Rate Limiting** — 50 req / IP / 15 min on `/api/chat`
+- **Input Validation** — XSS pattern detection (`isSafeForPrompt`), HTML entity escaping
+- **Body Size Cap** — 50 KB max JSON payloads
+- **Secret Manager** — Optional secure API key retrieval (no plaintext in environment)
+- **Content-Type Enforcement** — Only `application/json` accepted on API routes
+
+See [SECURITY.md](./SECURITY.md) for the full vulnerability disclosure policy.
+
+## 📊 API Reference
+
+### `POST /api/chat`
+
+Send a developer query with optional context and code snippet.
+
+**Request:**
+```json
+{
+  "message": "How can I optimise this function?",
+  "context": "Code Review & Optimization",
+  "githubCode": "def slow_fn(arr):\n  return [x for x in arr if x > 0]"
+}
+```
+
+**Response:**
+```json
+{
+  "reply": "## Code Review\n\nYour function looks clean...",
+  "stats": {
+    "elapsed": "1.23",
+    "promptTokens": 142,
+    "outputTokens": 318,
+    "totalTokens": 460
+  }
+}
+```
+
+**Headers:** `X-Cache: HIT | MISS`, `X-Response-Time: 1230ms`, `Cache-Control: no-store`
+
+### `GET /health`
+
+Returns server status for Cloud Run health probes.
+
+```json
+{ "status": "ok", "ai": "gemini-api-key", "uptime": 3600, "node": "v24.0.0" }
+```
+
+### `GET /api/version`
+
+Returns app metadata including all active Google Services.
+
+```json
+{
+  "name": "logicflow-code-review-assistant",
+  "version": "1.0.0",
+  "googleServices": ["Google Gemini...", "Vertex AI...", "...8 total"],
+  "cacheEntries": 5
+}
+```
+
+## ♿ Accessibility
+
+- Semantic HTML5 (`<header>`, `<main>`, `<aside>`, `<footer>`)
+- ARIA landmarks: `role="main"`, `role="complementary"`, `role="search"`
+- ARIA live region for AI response announcements
+- Skip-to-content link for keyboard users
+- `aria-label` on all interactive elements
+- `lang="en"` on `<html>` element
+- Keyboard-navigable interface
+
+## 🧪 Test Coverage
+
+```
+Test Suites: 7 total
+Tests:       88 passed, 0 failed
+
+├── Unit Tests: sanitizeInput()          — 9 tests
+├── Unit Tests: isSafeForPrompt()        — 6 tests
+├── Unit Tests: AppError class           — 4 tests
+├── Unit Tests: Cache Module             — 10 tests
+├── Unit Tests: Sanitize Module          — 7 tests
+├── API Validation & Integration Tests   — 44 tests
+└── Integration Tests: /api/version      — 8 tests
+```
+
+## 🌐 Deployment
+
+The app is deployed on **Google Cloud Run** — fully managed, auto-scaling, and stateless.
+
+```bash
+# Build and deploy to Cloud Run
+gcloud run deploy logicflow-assistant \
   --source . \
   --region us-central1 \
   --allow-unauthenticated \
-  --set-secrets=GEMINI_API_KEY=gemini-key:latest
+  --set-env-vars GEMINI_API_KEY=your_key
 ```
 
----
+**Live URL:** https://logicflow-513799679220.us-central1.run.app/
 
-## 📝 Assumptions
+## 📓 Chosen Vertical
 
-- The user requires instant visual feedback with minimal interaction friction.
-- The assistant operates as a standalone service designed for Google Cloud Run.
-- Cloud Run provides seamless scaling and authentication handling for Google Services via ADC without hardcoded credentials.
-- The Content Security Policy is tuned for the specific CDN assets used (Google Fonts, cdnjs) rather than being disabled (`contentSecurityPolicy: false`).
+**Developer Tools** — This solution addresses one of the most common pain points in software development: slow, inconsistent code review. LogicFlow provides instant, context-aware feedback in three modes:
 
----
+1. **Code Review & Optimization** — Identifies performance bottlenecks, anti-patterns, and style issues
+2. **System Architecture Design** — Reviews architectural decisions against SOLID principles and cloud-native patterns
+3. **Debugging & Error Resolution** — Structured root-cause analysis with step-by-step debugging strategies
 
-*Built with Google Gemini, Vertex AI, Google Cloud Run, and Cloud Logging for PromptWars Virtual.*
+### Approach & Logic
+
+1. User selects their **context** (Code Review / Architecture / Debugging)
+2. Message + optional code paste → server validates and sanitizes input
+3. Context-specific **system prompt** is constructed and sent to Gemini
+4. Response is checked against the **in-memory cache** (5-min TTL) before hitting the API
+5. Conversation turn is **persisted to Firestore** asynchronously (never blocks response)
+6. **Custom metrics** are written to Cloud Monitoring for observability
+7. AI response is streamed back as Markdown and rendered in the chat UI
+
+### Assumptions
+
+- Gemini free-tier quota is sufficient for demo; production uses Vertex AI with ADC
+- Firestore + Secret Manager availability is optional — the app degrades gracefully
+- The in-memory cache is process-scoped; a Redis layer would be used in multi-instance production
+
+## 📄 License
+
+[MIT](./LICENSE) © LogicFlow Team
