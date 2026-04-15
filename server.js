@@ -1,9 +1,15 @@
 /**
  * @fileoverview LogicFlow: Code Review Assistant — Server Entry Point.
  *
- * A context-aware developer assistant powered by Google Gemini / Vertex AI.
- * Deployed on Google Cloud Run for auto-scaling, secure service-to-service
- * authentication, and native integration with Cloud Logging.
+ * A context-aware developer assistant powered by multiple Google Cloud services:
+ *  - Google Gemini (gemini-2.5-flash) — conversational AI via Developer API
+ *  - Vertex AI (gemini-2.0-flash)     — fallback via Application Default Credentials
+ *  - Google Cloud Run                  — auto-scaling serverless deployment
+ *  - Google Cloud Logging              — structured JSON log ingestion
+ *  - Google Search Grounding           — real-time factual AI responses
+ *  - Google Cloud Firestore            — conversation history persistence
+ *  - Google Cloud Secret Manager       — secure API-key retrieval
+ *  - Google Cloud Monitoring           — custom metrics & observability
  *
  * @module server
  * @requires express
@@ -12,6 +18,9 @@
  * @requires compression
  * @requires express-rate-limit
  * @requires dotenv
+ * @requires @google-cloud/firestore
+ * @requires @google-cloud/secret-manager
+ * @requires @google-cloud/monitoring
  */
 
 'use strict';
@@ -23,6 +32,10 @@ const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
+
+// ─── Google Cloud Utility Modules ────────────────────────────────────────────
+const { saveConversationTurn } = require('./src/utils/firestore');
+const { recordChatRequest, recordAiLatency } = require('./src/utils/metrics');
 
 // ─── Custom Error Class ───────────────────────────────────────────────────────
 
@@ -490,6 +503,8 @@ CRITICAL RESPONSE RULES:
       if (cached && (Date.now() - cached.timestamp) < CACHE_TTL_MS) {
         log('INFO', 'Cache hit -- returning cached AI response.', { context, cacheKey });
         res.setHeader('X-Cache', 'HIT');
+        // Fire-and-forget: record cache hit metric
+        recordChatRequest({ cached: true, context }).catch(() => {});
         return res.json({ reply: cached.reply, stats: cached.stats, cached: true });
       }
     }
@@ -531,6 +546,22 @@ CRITICAL RESPONSE RULES:
       });
       pruneCache();
     }
+
+    // ── Google Cloud Integrations (fire-and-forget) ──────────────────────────
+    // Persist conversation turn to Firestore for history & analytics
+    saveConversationTurn({
+      sessionId:   req.headers['x-session-id'] || 'anonymous',
+      context,
+      userMessage: rawMessage,
+      aiReply:     result.text,
+      tokens:      result.totalTokens,
+      elapsedMs,
+      cached:      false,
+    }).catch(() => {}); // never block the response
+
+    // Record custom metrics to Cloud Monitoring
+    recordChatRequest({ cached: false, context }).catch(() => {});
+    recordAiLatency(elapsedMs).catch(() => {});
 
     return res.json(responseBody);
 
@@ -588,16 +619,21 @@ app.get('/health', (_req, res) => {
  * @returns {{ name: string, version: string, googleServices: string[] }} JSON.
  */
 app.get('/api/version', (_req, res) => {
+  const { cacheSize } = require('./src/utils/cache');
   res.json({
     name: 'logicflow-code-review-assistant',
     version: '1.0.0',
     googleServices: [
-      'Google Gemini (gemini-2.5-flash)',
-      'Vertex AI (gemini-2.0-flash-001)',
-      'Google Cloud Run',
-      'Google Cloud Logging',
-      'Google Search Grounding',
+      'Google Gemini (gemini-2.5-flash)  — conversational AI via Developer API',
+      'Vertex AI (gemini-2.0-flash-001)  — ADC fallback on Cloud Run',
+      'Google Cloud Run                   — auto-scaling serverless host',
+      'Google Cloud Logging               — structured JSON log ingestion',
+      'Google Search Grounding            — real-time factual AI responses',
+      'Google Cloud Firestore             — conversation history persistence',
+      'Google Cloud Secret Manager       — secure API-key retrieval',
+      'Google Cloud Monitoring            — custom observability metrics',
     ],
+    cacheEntries: cacheSize(),
     runtime: 'Node.js',
     runtimeVersion: process.version,
   });
@@ -657,4 +693,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { app, sanitizeInput, isSafeForPrompt, AppError };
+module.exports = { app, sanitizeInput, isSafeForPrompt, AppError, getCacheKey, pruneCache };

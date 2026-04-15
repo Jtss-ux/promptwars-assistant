@@ -8,8 +8,10 @@
     "dev": "node server.js",
     "test": "node --test app.test.js",
     "test:watch": "node --test --watch app.test.js",
-    "lint": "eslint server.js app.test.js",
-    "lint:fix": "eslint --fix server.js app.test.js"
+    "test:coverage": "node --test --experimental-test-coverage app.test.js",
+    "lint": "eslint server.js app.test.js src/",
+    "lint:fix": "eslint --fix server.js app.test.js src/",
+    "size": "git ls-files | ForEach-Object { (Get-Item $_).Length } | Measure-Object -Sum"
   },
   "keywords": [
     "gemini",
@@ -18,7 +20,11 @@
     "ai-assistant",
     "cloud-run",
     "google-cloud",
-    "promptwars"
+    "firestore",
+    "secret-manager",
+    "cloud-monitoring",
+    "promptwars",
+    "hackathon"
   ],
   "author": "LogicFlow Team",
   "license": "MIT",
@@ -27,6 +33,9 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "@google-cloud/firestore": "^8.5.0",
+    "@google-cloud/monitoring": "^5.3.1",
+    "@google-cloud/secret-manager": "^6.1.1",
     "@google-cloud/vertexai": "^1.11.0",
     "@google/genai": "^1.50.0",
     "compression": "^1.8.0",
