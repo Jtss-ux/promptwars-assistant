@@ -8,7 +8,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](./LICENSE)
 [![Cloud Run](https://img.shields.io/badge/Cloud%20Run-Deployed-4285F4?style=for-the-badge&logo=google-cloud)](https://logicflow-513799679220.us-central1.run.app/)
 
-**An AI-powered code review assistant that provides context-aware feedback, architectural guidance, and real-time debugging support — powered by Google Gemini and 8 Google Cloud services.**
+**An AI-powered code review assistant that provides context-aware feedback, architectural guidance, and real-time debugging support — powered by Google Gemini and 9 Google Cloud services.**
 
 [🚀 Live Demo](https://logicflow-513799679220.us-central1.run.app/) · [📖 Architecture](./docs/ARCHITECTURE.md) · [🤝 Contributing](./CONTRIBUTING.md)
 
@@ -53,6 +53,7 @@ See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for the full system diagram.
 | 6 | **Google Cloud Firestore** | Conversation turn persistence & analytics |
 | 7 | **Google Cloud Secret Manager** | Secure API key retrieval (no plaintext in env) |
 | 8 | **Google Cloud Monitoring** | Custom metrics: `chat_requests_total`, `ai_latency_ms` |
+| 9 | **Google Cloud Error Reporting** | Automated crash identification & issue management |
 
 ## 🚀 Quick Start
 

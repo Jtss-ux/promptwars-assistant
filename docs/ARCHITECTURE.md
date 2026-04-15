@@ -72,6 +72,7 @@ LogicFlow is a context-aware AI code review assistant built on **Google Cloud**.
 | **Google Cloud Firestore** | Conversation history | `src/utils/firestore.js` |
 | **Google Cloud Secret Manager** | Secure secret retrieval | `src/utils/secrets.js` |
 | **Google Cloud Monitoring** | Custom metrics | `src/utils/metrics.js` |
+| **Google Cloud Error Reporting** | Automatic crash analysis | `server.js` |
 
 ## In-Memory Cache
 
