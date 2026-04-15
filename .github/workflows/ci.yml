@@ -1,0 +1,75 @@
+name: CI — LogicFlow Code Review Assistant
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  lint-and-test:
+    name: Lint & Test (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [20.x]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install --prefer-offline
+
+      - name: Lint with ESLint
+        run: npm run lint
+
+      - name: Run unit & integration tests
+        run: npm test
+        env:
+          NODE_ENV: test
+
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Install dependencies
+        run: npm install --prefer-offline
+
+      - name: Run npm audit
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+  docker-build:
+    name: Docker Build Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t logicflow:ci .
+
+      - name: Verify image runs and responds to health check
+        run: |
+          docker run -d --name logicflow-test -p 8080:8080 \
+            -e NODE_ENV=test \
+            logicflow:ci
+          sleep 3
+          curl --fail http://localhost:8080/health || exit 1
+          docker stop logicflow-test

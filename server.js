@@ -151,6 +151,95 @@ const MAX_MESSAGE_LENGTH = 5000;
 /** Maximum length of an attached GitHub code payload in characters. */
 const MAX_CODE_LENGTH = 50000;
 
+// ─── In-Memory Response Cache ─────────────────────────────────────────────────
+
+/**
+ * A lightweight in-memory cache for AI-generated responses.
+ *
+ * Keyed by a normalized `context:message` string, this avoids redundant
+ * round-trips to the Gemini API for identical prompts within the TTL window.
+ * The cache auto-evicts entries older than {@link CACHE_TTL_MS} and caps at
+ * {@link MAX_CACHE_ENTRIES} to prevent unbounded memory growth.
+ *
+ * @type {Map<string, {reply: string, stats: Object, timestamp: number}>}
+ */
+const responseCache = new Map();
+
+/** Cache entry time-to-live: 5 minutes. */
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+/** Maximum number of cached entries before oldest entries are evicted. */
+const MAX_CACHE_ENTRIES = 100;
+
+/**
+ * Generate a normalized cache key from context and message.
+ * Short-messages only (≤200 chars) are cached to avoid storing huge payloads.
+ *
+ * @param {string} context - Execution context string.
+ * @param {string} message - User message.
+ * @returns {string|null} Cache key, or null if the response should not be cached.
+ */
+function getCacheKey(context, message) {
+  if (message.length > 200) return null; // Don't cache large code-heavy queries
+  return `${context}::${message.trim().toLowerCase()}`;
+}
+
+/**
+ * Purge all cache entries whose TTL has expired, plus oldest entries
+ * if the cache has grown beyond {@link MAX_CACHE_ENTRIES}.
+ *
+ * @returns {void}
+ */
+function pruneCache() {
+  const now = Date.now();
+  for (const [key, entry] of responseCache) {
+    if (now - entry.timestamp > CACHE_TTL_MS) {
+      responseCache.delete(key);
+    }
+  }
+  // If still over limit, evict oldest entries (Map preserves insertion order)
+  if (responseCache.size > MAX_CACHE_ENTRIES) {
+    const excess = responseCache.size - MAX_CACHE_ENTRIES;
+    let evicted = 0;
+    for (const key of responseCache.keys()) {
+      if (evicted < excess) {
+        responseCache.delete(key);
+        evicted++;
+      } else {
+        break;
+      }
+    }
+  }
+}
+
+// ─── Response-Time Middleware ─────────────────────────────────────────────────
+
+/**
+ * Attach an `X-Response-Time` header to every response showing the elapsed
+ * server-side processing time in milliseconds.  Useful for performance
+ * monitoring and Cloud Logging correlation.
+ *
+ * @param {express.Request}  req  - Express request.
+ * @param {express.Response} res  - Express response.
+ * @param {Function}         next - Next middleware.
+ */
+app.use((req, res, next) => {
+  const start = process.hrtime.bigint();
+  const originalEnd = res.end.bind(res);
+
+  res.end = (...args) => {
+    const elapsedNs = process.hrtime.bigint() - start;
+    const elapsedMs = Number(elapsedNs / 1_000_000n);
+    // Only set if headers haven't been sent yet (guards against double-end)
+    if (!res.headersSent) {
+      res.setHeader('X-Response-Time', `${elapsedMs}ms`);
+    }
+    return originalEnd(...args);
+  };
+
+  next();
+});
+
 // ─── Utility Functions ────────────────────────────────────────────────────────
 
 /**
@@ -392,7 +481,20 @@ CRITICAL RESPONSE RULES:
       prompt += `\n\n**SUPPLIED GITHUB CODE TO REVIEW:**\n\`\`\`\n${rawCode}\n\`\`\`\nPlease review the above code directly based on the user's query.`;
     }
 
-    // ── AI Invocation ─────────────────────────────────────────────────────
+    // -- AI Invocation (with in-memory cache) -----------------------------------
+    const cacheKey = getCacheKey(context, rawMessage);
+
+    // Serve from cache if a valid, unexpired entry exists
+    if (cacheKey) {
+      const cached = responseCache.get(cacheKey);
+      if (cached && (Date.now() - cached.timestamp) < CACHE_TTL_MS) {
+        log('INFO', 'Cache hit -- returning cached AI response.', { context, cacheKey });
+        res.setHeader('X-Cache', 'HIT');
+        return res.json({ reply: cached.reply, stats: cached.stats, cached: true });
+      }
+    }
+
+    res.setHeader('X-Cache', 'MISS');
     const startTime = Date.now();
     const result = await getAIResponse(prompt);
     const elapsedMs = Date.now() - startTime;
@@ -410,7 +512,7 @@ CRITICAL RESPONSE RULES:
       latency: `${(elapsedMs / 1000).toFixed(3)}s`,
     });
 
-    return res.json({
+    const responseBody = {
       reply: result.text,
       stats: {
         elapsed: (elapsedMs / 1000).toFixed(2),
@@ -418,7 +520,19 @@ CRITICAL RESPONSE RULES:
         outputTokens: result.outputTokens,
         totalTokens: result.totalTokens,
       },
-    });
+    };
+
+    // Store successful AI response in cache for future identical queries
+    if (cacheKey) {
+      responseCache.set(cacheKey, {
+        reply: responseBody.reply,
+        stats: responseBody.stats,
+        timestamp: Date.now(),
+      });
+      pruneCache();
+    }
+
+    return res.json(responseBody);
 
   } catch (err) {
     // Known application errors — return appropriate HTTP status

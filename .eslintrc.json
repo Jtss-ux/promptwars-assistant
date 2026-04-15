@@ -1,0 +1,35 @@
+{
+  "env": {
+    "node": true,
+    "es2022": true,
+    "browser": true
+  },
+  "parserOptions": {
+    "ecmaVersion": 2022,
+    "sourceType": "script"
+  },
+  "rules": {
+    "strict": ["error", "global"],
+    "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+    "no-eval": "error",
+    "no-implied-eval": "error",
+    "no-new-func": "error",
+    "no-console": "off",
+    "no-var": "error",
+    "prefer-const": "error",
+    "eqeqeq": ["error", "always"],
+    "curly": "error",
+    "no-throw-literal": "error",
+    "no-return-assign": "error",
+    "no-shadow": "error",
+    "no-duplicate-imports": "error",
+    "no-undef": "error",
+    "no-unreachable": "error",
+    "handle-callback-err": "error",
+    "node/no-extraneous-require": "off"
+  },
+  "ignorePatterns": [
+    "node_modules/",
+    "public/app.js"
+  ]
+}

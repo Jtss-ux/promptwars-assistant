@@ -22,7 +22,6 @@
 
 const { test, describe, before, after } = require('node:test');
 const assert = require('node:assert/strict');
-const { spawn } = require('node:child_process');
 
 // ── Unit Tests: sanitizeInput() ───────────────────────────────────────────────
 
@@ -165,44 +164,30 @@ describe('Unit Tests: AppError', () => {
 // ── Integration & E2E Tests ───────────────────────────────────────────────────
 
 describe('API Integration Tests', { concurrency: false }, () => {
-  let serverProcess;
+  let serverInstance;
   const PORT = 8081;
   const BASE_URL = `http://localhost:${PORT}`;
 
   /**
-   * Spawn a test server instance on a dedicated port before all tests run.
-   * Waits up to 7.5 seconds for the /health probe to succeed.
+   * Start the Express app directly on a dedicated test port.
+   * Using app.listen() avoids child-process spawn race conditions on Windows.
    */
   before(async () => {
-    serverProcess = spawn('node', ['server.js'], {
-      env: { ...process.env, PORT },
-      stdio: 'pipe',
-    });
-
+    const { app } = require('./server');
     await new Promise((resolve, reject) => {
-      let retries = 0;
-      const MAX_RETRIES = 15;
-
-      const checkHealth = async () => {
-        try {
-          const res = await fetch(`${BASE_URL}/health`);
-          if (res.ok) return resolve();
-          throw new Error('Non-OK health response');
-        } catch {
-          if (++retries > MAX_RETRIES) {
-            serverProcess.kill();
-            return reject(new Error('Server failed to start within timeout.'));
-          }
-          setTimeout(checkHealth, 500);
-        }
-      };
-      checkHealth();
+      serverInstance = app.listen(PORT, (err) => {
+        if (err) return reject(err);
+        resolve();
+      });
+      serverInstance.on('error', reject);
     });
   });
 
-  /** Terminate the test server after all tests complete. */
-  after(() => {
-    if (serverProcess) serverProcess.kill();
+  /** Close the test server after all tests complete. */
+  after(async () => {
+    if (serverInstance) {
+      await new Promise((resolve) => serverInstance.close(resolve));
+    }
   });
 
   // ── Health Check ────────────────────────────────────────────────────────
