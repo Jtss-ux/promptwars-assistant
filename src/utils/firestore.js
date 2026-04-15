@@ -42,7 +42,7 @@ let _initialized = false;
  * @returns {import('@google-cloud/firestore').Firestore|null}
  */
 function getDb() {
-  if (_initialized) return _db;
+  if (_initialized) {return _db;}
   _initialized = true;
 
   try {
@@ -76,8 +76,9 @@ function getDb() {
  * @returns {Promise<void>}
  */
 async function saveConversationTurn(turn) {
+  if (process.env.NODE_ENV === 'test') {return;}
   const db = getDb();
-  if (!db) return;
+  if (!db) {return;}
 
   try {
     const { FieldValue } = require('@google-cloud/firestore');
@@ -110,8 +111,9 @@ async function saveConversationTurn(turn) {
  * @returns {Promise<Array<Object>>} Array of turn objects, newest first.
  */
 async function getConversationHistory(sessionId, limit = 10) {
+  if (process.env.NODE_ENV === 'test') {return [];}
   const db = getDb();
-  if (!db) return [];
+  if (!db) {return [];}
 
   try {
     const snapshot = await db.collection('conversations')

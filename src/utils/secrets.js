@@ -30,7 +30,7 @@ let _initialized = false;
  * @returns {import('@google-cloud/secret-manager').SecretManagerServiceClient|null}
  */
 function getClient() {
-  if (_initialized) return _client;
+  if (_initialized) {return _client;}
   _initialized = true;
 
   try {

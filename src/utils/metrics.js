@@ -31,7 +31,7 @@ const PROJECT_ID = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJEC
  * @returns {import('@google-cloud/monitoring').MetricServiceClient|null}
  */
 function getClient() {
-  if (_initialized) return _client;
+  if (_initialized) {return _client;}
   _initialized = true;
 
   try {
@@ -56,9 +56,10 @@ function getClient() {
  * @returns {Promise<void>}
  */
 async function writeMetric(metricType, value, labels = {}) {
-  if (!PROJECT_ID) return; // Can't write without a project
+  if (process.env.NODE_ENV === 'test') {return;}
+  if (!PROJECT_ID) {return;} // Can't write without a project
   const client = getClient();
-  if (!client) return;
+  if (!client) {return;}
 
   const now = Date.now();
   const seconds = Math.floor(now / 1000);

@@ -14,7 +14,7 @@
  * @returns {string} HTML-entity-escaped string.
  */
 function sanitizeInput(str) {
-  if (typeof str !== 'string') return '';
+  if (typeof str !== 'string') {return '';}
   return str
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -31,10 +31,10 @@ function sanitizeInput(str) {
  * @returns {boolean} True if the message is safe for the AI prompt.
  */
 function isSafeForPrompt(message) {
-  if (typeof message !== 'string') return false;
+  if (typeof message !== 'string') {return false;}
   const lower = message.toLowerCase();
-  if (/<script[\s>]/i.test(message)) return false;
-  if (lower.includes('javascript:')) return false;
+  if (/<script[\s>]/i.test(message)) {return false;}
+  if (lower.includes('javascript:')) {return false;}
   return true;
 }
 

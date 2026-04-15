@@ -20,6 +20,9 @@
 
 'use strict';
 
+// Ensure underlying services do not trigger async network loops during testing
+process.env.NODE_ENV = 'test';
+
 const { test, describe, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -176,7 +179,7 @@ describe('API Integration Tests', { concurrency: false }, () => {
     const { app } = require('./server');
     await new Promise((resolve, reject) => {
       serverInstance = app.listen(PORT, (err) => {
-        if (err) return reject(err);
+        if (err) {return reject(err);}
         resolve();
       });
       serverInstance.on('error', reject);

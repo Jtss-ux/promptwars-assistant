@@ -26,7 +26,7 @@ const MAX_CACHE_ENTRIES = 100;
  * @returns {string|null} Cache key, or null if response should not be cached.
  */
 function getCacheKey(context, message) {
-  if (!message || message.length > 200) return null;
+  if (!message || message.length > 200) {return null;}
   return `${context}::${message.trim().toLowerCase()}`;
 }
 
@@ -53,9 +53,9 @@ function pruneCache() {
  * @returns {{ reply: string, stats: Object }|null} Cached data or null.
  */
 function getCache(key) {
-  if (!key) return null;
+  if (!key) {return null;}
   const entry = responseCache.get(key);
-  if (!entry) return null;
+  if (!entry) {return null;}
   if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
     responseCache.delete(key);
     return null;
@@ -71,7 +71,7 @@ function getCache(key) {
  * @param {Object} stats - Response statistics object.
  */
 function setCache(key, reply, stats) {
-  if (!key) return;
+  if (!key) {return;}
   responseCache.set(key, { reply, stats, timestamp: Date.now() });
   pruneCache();
 }

@@ -203,7 +203,7 @@ const MAX_CACHE_ENTRIES = 100;
  * @returns {string|null} Cache key, or null if the response should not be cached.
  */
 function getCacheKey(context, message) {
-  if (message.length > 200) return null; // Don't cache large code-heavy queries
+  if (message.length > 200) {return null;} // Don't cache large code-heavy queries
   return `${context}::${message.trim().toLowerCase()}`;
 }
 
@@ -275,7 +275,7 @@ app.use((req, res, next) => {
  * @returns {string} The sanitized string with HTML entities escaped.
  */
 function sanitizeInput(str) {
-  if (typeof str !== 'string') return '';
+  if (typeof str !== 'string') {return '';}
   return str
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -292,7 +292,7 @@ function sanitizeInput(str) {
  * @returns {boolean} True if the string is considered safe for AI consumption.
  */
 function isSafeForPrompt(str) {
-  if (typeof str !== 'string') return false;
+  if (typeof str !== 'string') {return false;}
   // Reject payloads containing obvious script-injection patterns
   const dangerous = /<script[\s>]/i.test(str) || /javascript:/i.test(str);
   return !dangerous;
