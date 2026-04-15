@@ -17,6 +17,7 @@ COPY --from=deps /usr/src/app/node_modules ./node_modules
 # Bundle application source (no dev files)
 COPY package.json ./
 COPY server.js ./
+COPY src/ ./src/
 COPY public/ ./public/
 
 # Non-root user for container security (principle of least privilege)
