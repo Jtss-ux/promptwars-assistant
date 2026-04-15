@@ -24,6 +24,27 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
+// ─── Custom Error Class ───────────────────────────────────────────────────────
+
+/**
+ * Application-level error with an associated HTTP status code.
+ * Enables clean, structured error propagation through middleware.
+ *
+ * @class AppError
+ * @extends Error
+ */
+class AppError extends Error {
+  /**
+   * @param {string} message  - Human-readable error description.
+   * @param {number} status   - HTTP status code (e.g. 400, 415, 500).
+   */
+  constructor(message, status = 500) {
+    super(message);
+    this.name = 'AppError';
+    this.status = status;
+  }
+}
+
 // ─── Express App Initialization ───────────────────────────────────────────────
 
 const app = express();
@@ -31,13 +52,44 @@ const app = express();
 // ─── Security Middleware ──────────────────────────────────────────────────────
 
 /**
- * Helmet sets various HTTP response headers to help protect against
+ * Helmet sets various HTTP security response headers to protect against
  * common web vulnerabilities (XSS, clickjacking, MIME sniffing, etc.).
- * CSP is relaxed to allow inline styles required by the markdown renderer.
+ *
+ * CSP is tuned to allow:
+ *  - Google Fonts (fonts.googleapis.com, fonts.gstatic.com)
+ *  - Highlight.js + Marked from cdnjs (cdnjs.cloudflare.com)
+ *  - Inline styles required by the markdown renderer
+ *  - No unsafe-eval; scripts must come from self or the approved CDN
+ *
+ * @see {@link https://helmetjs.github.io/ Helmet.js documentation}
  */
 app.use(helmet({
-  contentSecurityPolicy: false,
-  crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: [
+        "'self'",
+        'cdnjs.cloudflare.com',
+      ],
+      styleSrc: [
+        "'self'",
+        "'unsafe-inline'",          // required by highlight.js theme injection
+        'fonts.googleapis.com',
+        'cdnjs.cloudflare.com',
+      ],
+      fontSrc: [
+        "'self'",
+        'fonts.gstatic.com',
+      ],
+      imgSrc: ["'self'", 'data:'],
+      connectSrc: ["'self'"],
+      frameSrc: ["'none'"],
+      objectSrc: ["'none'"],
+      upgradeInsecureRequests: [],
+    },
+  },
+  crossOriginEmbedderPolicy: false, // required for CDN resources
+  frameguard: { action: 'SAMEORIGIN' },
 }));
 
 /**
@@ -91,11 +143,21 @@ const chatLimiter = rateLimit({
   message: { error: 'Too many requests. Please wait before sending more messages.' },
 });
 
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+/** Maximum length of a user message in characters. */
+const MAX_MESSAGE_LENGTH = 5000;
+
+/** Maximum length of an attached GitHub code payload in characters. */
+const MAX_CODE_LENGTH = 50000;
+
 // ─── Utility Functions ────────────────────────────────────────────────────────
 
 /**
  * Sanitize user input by escaping HTML entities to prevent XSS attacks.
- * This is applied server-side as a defence-in-depth measure.
+ * Applied server-side as a defence-in-depth measure for display and logging.
+ * NOTE: Do NOT pass sanitized strings to the AI prompt — sanitization
+ * introduces HTML entities (e.g. &amp;lt;) that degrade response quality.
  *
  * @param {string} str - The raw user input string.
  * @returns {string} The sanitized string with HTML entities escaped.
@@ -111,21 +173,36 @@ function sanitizeInput(str) {
 }
 
 /**
+ * Validate that a string is safe raw input (no HTML tags, no script patterns).
+ * Used to guard raw strings before passing to the AI prompt.
+ *
+ * @param {string} str - The raw user input string.
+ * @returns {boolean} True if the string is considered safe for AI consumption.
+ */
+function isSafeForPrompt(str) {
+  if (typeof str !== 'string') return false;
+  // Reject payloads containing obvious script-injection patterns
+  const dangerous = /<script[\s>]/i.test(str) || /javascript:/i.test(str);
+  return !dangerous;
+}
+
+/**
  * Emit a structured JSON log entry fully compatible with Google Cloud Logging.
  *
  * The log format follows the Cloud Logging structured logging specification:
- * - `severity`  maps to Cloud Logging severity levels (INFO, WARNING, ERROR).
- * - `message`   is the primary human-readable log line.
+ * - `severity`    maps to Cloud Logging severity levels (INFO, WARNING, ERROR).
+ * - `message`     is the primary human-readable log line.
  * - `httpRequest` is an optional structured field automatically parsed by
  *   Cloud Logging to populate the request log viewer.
+ * - `labels`      attaches the service name for log-based metric filtering.
  *
  * When deployed to Cloud Run, stdout/stderr is automatically forwarded to
- * Cloud Logging and these structured entries are indexed with proper
+ * Cloud Logging, and these structured entries are indexed with proper
  * severity filtering, log-based metrics, and alerting support.
  *
- * @param {string} severity        - Log severity: 'INFO' | 'WARNING' | 'ERROR'.
- * @param {string} message         - Human-readable description of the event.
- * @param {Object} [meta]          - Optional structured key-value metadata.
+ * @param {string} severity          - Log severity: 'INFO' | 'WARNING' | 'ERROR'.
+ * @param {string} message           - Human-readable description of the event.
+ * @param {Object} [meta]            - Optional structured key-value metadata.
  * @param {Object} [httpRequestInfo] - Optional HTTP request context for Cloud Logging.
  * @returns {void}
  * @see {@link https://cloud.google.com/logging/docs/structured-logging Cloud Logging Structured Logging}
@@ -136,16 +213,17 @@ function log(severity, message, meta = {}, httpRequestInfo = null) {
     severity,
     message,
     timestamp: new Date().toISOString(),
-    logging: { googleapis: { com: { labels: { service: 'logicflow-assistant' } } } },
+    'logging.googleapis.com/labels': { service: 'logicflow-assistant' },
     ...meta,
   };
   if (httpRequestInfo) {
     entry.httpRequest = httpRequestInfo;
   }
+  const output = JSON.stringify(entry);
   if (severity === 'ERROR') {
-    console.error(JSON.stringify(entry));
+    console.error(output);
   } else {
-    console.log(JSON.stringify(entry));
+    console.log(output);
   }
 }
 
@@ -167,7 +245,7 @@ let genAIClient = null;
  *
  * @param {string} prompt - The fully constructed prompt string.
  * @returns {Promise<{text: string, promptTokens: number, outputTokens: number, totalTokens: number}>}
- * @throws {Error} If the AI service is unreachable or returns an error.
+ * @throws {AppError} If the AI service is unreachable or returns an error.
  */
 async function getAIResponse(prompt) {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -223,19 +301,22 @@ async function getAIResponse(prompt) {
  * temporarily unavailable.  Responses are matched to the user's selected
  * execution context so the app remains useful even during outages.
  *
- * @param {string} userMessage - The original user message.
+ * @param {string} userMessage - The original user message (raw, not sanitized).
  * @param {string} context     - The selected execution context category.
  * @returns {string} A Markdown-formatted fallback response.
  */
 function getFallbackResponse(userMessage, context) {
+  // Escape message for safe display in Markdown
+  const safeMsg = sanitizeInput(userMessage).slice(0, 120);
+
   const fallbacks = {
-    'Code Review & Optimization': `## Code Review Tips\n\n**For your query**: *${userMessage}*\n\n- Use \`enumerate()\` instead of \`range(len())\`\n- Replace nested loops with dict lookups (O(1) vs O(n))\n- Use \`numpy\` vectorization for numerical operations\n- Profile with \`cProfile\` before optimizing\n\n\`\`\`python\n# Instead of:\nfor i in range(len(arr)):\n    for j in range(len(arr)):\n        ...\n# Use:\nlookup = {val: idx for idx, val in enumerate(arr)}\n\`\`\``,
-    'System Architecture Design': `## Architecture Guidance\n\n**For your query**: *${userMessage}*\n\n- Apply **SOLID principles** — single responsibility, open/closed\n- Prefer **microservices** for independently scalable components\n- Use **event-driven patterns** (pub/sub) for async workflows\n- Design for **failure** — circuit breakers, retries, timeouts`,
-    'Debugging & Error Resolution': `## Debugging Strategy\n\n**For your query**: *${userMessage}*\n\n1. **Reproduce** reliably first — exact inputs matter\n2. **Bisect** the code — reduce scope with binary search\n3. **Add structured logging** at boundary points\n4. Check **race conditions** if async/threaded\n5. Use \`pdb\` (Python) or \`debugger;\` (JS) for interactive inspection`,
+    'Code Review & Optimization': `## Code Review Tips\n\n**For your query**: *${safeMsg}*\n\n- Use \`enumerate()\` instead of \`range(len())\`\n- Replace nested loops with dict lookups (O(1) vs O(n))\n- Use \`numpy\` vectorization for numerical operations\n- Profile with \`cProfile\` before optimizing\n\n\`\`\`python\n# Instead of:\nfor i in range(len(arr)):\n    for j in range(len(arr)):\n        ...\n# Use:\nlookup = {val: idx for idx, val in enumerate(arr)}\n\`\`\``,
+    'System Architecture Design': `## Architecture Guidance\n\n**For your query**: *${safeMsg}*\n\n- Apply **SOLID principles** — single responsibility, open/closed\n- Prefer **microservices** for independently scalable components\n- Use **event-driven patterns** (pub/sub) for async workflows\n- Design for **failure** — circuit breakers, retries, timeouts`,
+    'Debugging & Error Resolution': `## Debugging Strategy\n\n**For your query**: *${safeMsg}*\n\n1. **Reproduce** reliably first — exact inputs matter\n2. **Bisect** the code — reduce scope with binary search\n3. **Add structured logging** at boundary points\n4. Check **race conditions** if async/threaded\n5. Use \`pdb\` (Python) or \`debugger;\` (JS) for interactive inspection`,
   };
 
   return fallbacks[context]
-    || `## LogicFlow Response\n\n**For your query**: *${userMessage}*\n\nHere's expert advice for *${context || 'General'}*:\n\n- Break your problem into **small, testable units**\n- Write clear **function signatures** with type hints\n- Use **version control** (git) for every experiment\n- Measure before optimizing — profile first, fix bottlenecks second`;
+    || `## LogicFlow Response\n\n**For your query**: *${safeMsg}*\n\nHere's expert advice for *${context || 'General'}*:\n\n- Break your problem into **small, testable units**\n- Write clear **function signatures** with type hints\n- Use **version control** (git) for every experiment\n- Measure before optimizing — profile first, fix bottlenecks second`;
 }
 
 // ─── API Routes ───────────────────────────────────────────────────────────────
@@ -247,9 +328,13 @@ function getFallbackResponse(userMessage, context) {
  * GitHub code snippet.  Constructs a context-aware prompt and forwards
  * it to Google Gemini for a response.
  *
+ * IMPORTANT: Raw (un-sanitized) user strings are passed to the AI prompt
+ * to preserve natural language and code semantics.  Sanitization is applied
+ * only to log entries and fallback display text to prevent XSS.
+ *
  * @route POST /api/chat
- * @param {string}  req.body.message    - The user's chat message (required).
- * @param {string}  [req.body.context]  - Execution context category.
+ * @param {string}  req.body.message      - The user's chat message (required).
+ * @param {string}  [req.body.context]    - Execution context category.
  * @param {string}  [req.body.githubCode] - Raw code fetched from GitHub.
  * @returns {{ reply: string, stats?: Object }} JSON response.
  */
@@ -258,48 +343,53 @@ app.post('/api/chat', chatLimiter, async (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
 
   try {
-    // ── Input Validation ──────────────────────────────────────────────────
+    // ── Content-Type Guard ─────────────────────────────────────────────────
     const contentType = req.headers['content-type'] || '';
     if (!contentType.includes('application/json')) {
-      return res.status(415).json({ error: 'Content-Type must be application/json.' });
+      throw new AppError('Content-Type must be application/json.', 415);
     }
 
-    let { message, context, githubCode } = req.body;
+    // ── Extract & Validate Fields ──────────────────────────────────────────
+    const { message, context: rawContext, githubCode: rawCode } = req.body;
 
     if (!message || typeof message !== 'string') {
-      return res.status(400).json({ error: 'message is required' });
+      throw new AppError('message is required and must be a string.', 400);
     }
-
-    // Enforce length limits to prevent token abuse
-    const MAX_MESSAGE_LENGTH = 5000;
-    const MAX_CODE_LENGTH = 50000;
-
     if (message.length > MAX_MESSAGE_LENGTH) {
-      return res.status(400).json({ error: `Message exceeds ${MAX_MESSAGE_LENGTH} character limit.` });
+      throw new AppError(`Message exceeds ${MAX_MESSAGE_LENGTH} character limit.`, 400);
     }
-    if (githubCode && githubCode.length > MAX_CODE_LENGTH) {
-      return res.status(400).json({ error: `Code payload exceeds ${MAX_CODE_LENGTH} character limit.` });
+    if (rawCode && typeof rawCode !== 'string') {
+      throw new AppError('githubCode must be a string.', 400);
+    }
+    if (rawCode && rawCode.length > MAX_CODE_LENGTH) {
+      throw new AppError(`Code payload exceeds ${MAX_CODE_LENGTH} character limit.`, 400);
+    }
+    if (!isSafeForPrompt(message)) {
+      throw new AppError('Message contains disallowed content.', 400);
     }
 
-    // ── Sanitization ──────────────────────────────────────────────────────
-    message = sanitizeInput(message);
-    context = sanitizeInput(context || 'General Developer Support');
-    if (githubCode) githubCode = sanitizeInput(githubCode);
+    // Raw strings are passed directly to the AI to preserve semantics.
+    // Sanitization (HTML-escaping) is applied only for logging/display.
+    const rawMessage = message;
+    const context = (typeof rawContext === 'string' && rawContext.trim())
+      ? rawContext.trim()
+      : 'General Developer Support';
 
     // ── Prompt Construction ───────────────────────────────────────────────
     let prompt = `You are LogicFlow: Code Review Assistant, a senior software engineer AI.
 Current session context: ${context}.
-User query: "${message}"
+User query: "${rawMessage}"
 
 CRITICAL RESPONSE RULES:
 - ALWAYS provide answers strictly to the point. Stop immediately once the question is answered.
 - ONLY elaborate or provide explanation when explicitly asked by the user.
 - AVOID giving unnecessary explanations, boilerplate text, or generic advice.
 - If the user asks a simple question (e.g., "how to be a data analyst"), give a concise 2-3 sentence answer/list without filler text.
-- Match the response length exactly to the complexity of the question. Short question = short direct answer.`;
+- Match the response length exactly to the complexity of the question. Short question = short direct answer.
+- Use Markdown formatting for code blocks, lists, and headings to ensure readability.`;
 
-    if (githubCode) {
-      prompt += `\n\n**SUPPLIED GITHUB CODE TO REVIEW:**\n\`\`\`\n${githubCode}\n\`\`\`\nPlease review the above code directly based on the user's query.`;
+    if (rawCode) {
+      prompt += `\n\n**SUPPLIED GITHUB CODE TO REVIEW:**\n\`\`\`\n${rawCode}\n\`\`\`\nPlease review the above code directly based on the user's query.`;
     }
 
     // ── AI Invocation ─────────────────────────────────────────────────────
@@ -308,7 +398,7 @@ CRITICAL RESPONSE RULES:
     const elapsedMs = Date.now() - startTime;
 
     log('INFO', 'Chat response generated.', {
-      context,
+      context: sanitizeInput(context),
       elapsedMs,
       promptTokens: result.promptTokens,
       totalTokens: result.totalTokens,
@@ -329,14 +419,21 @@ CRITICAL RESPONSE RULES:
         totalTokens: result.totalTokens,
       },
     });
-  } catch (err) {
-    log('ERROR', 'Chat endpoint error.', { error: err.message });
 
-    // Provide a useful context-aware fallback instead of a blank error
+  } catch (err) {
+    // Known application errors — return appropriate HTTP status
+    if (err instanceof AppError) {
+      log('WARNING', `AppError: ${err.message}`, { status: err.status });
+      return res.status(err.status).json({ error: err.message });
+    }
+
+    // Unexpected errors — log and provide intelligent fallback
+    log('ERROR', 'Chat endpoint unexpected error.', { error: err.message });
+
     const { message = '', context = '' } = req.body || {};
     const fallback = getFallbackResponse(
-      sanitizeInput(message),
-      sanitizeInput(context),
+      typeof message === 'string' ? message : '',
+      typeof context === 'string' ? context : '',
     );
 
     return res.json({ reply: fallback });
@@ -348,19 +445,66 @@ CRITICAL RESPONSE RULES:
 /**
  * GET /health
  *
- * Returns a simple JSON object indicating server status and the
- * configured AI backend.  Used by Cloud Run health checks and
- * by the E2E test suite to confirm server readiness.
+ * Returns a simple JSON object indicating server status, the configured
+ * AI backend, Node.js version, and uptime.  Used by Cloud Run health checks
+ * and by the E2E test suite to confirm server readiness.
  *
  * @route GET /health
- * @returns {{ status: string, ai: string }} JSON health payload.
+ * @returns {{ status: string, ai: string, uptime: number, node: string }} JSON health payload.
  */
 app.get('/health', (_req, res) => {
   res.json({
     status: 'ok',
     ai: process.env.GEMINI_API_KEY ? 'gemini-api-key' : 'vertex-ai-adc',
     uptime: Math.floor(process.uptime()),
+    node: process.version,
+    env: process.env.NODE_ENV || 'development',
   });
+});
+
+// ─── Version / Info Endpoint ──────────────────────────────────────────────────
+
+/**
+ * GET /api/version
+ *
+ * Returns application metadata for observability dashboards and
+ * integration tests.
+ *
+ * @route GET /api/version
+ * @returns {{ name: string, version: string, googleServices: string[] }} JSON.
+ */
+app.get('/api/version', (_req, res) => {
+  res.json({
+    name: 'logicflow-code-review-assistant',
+    version: '1.0.0',
+    googleServices: [
+      'Google Gemini (gemini-2.5-flash)',
+      'Vertex AI (gemini-2.0-flash-001)',
+      'Google Cloud Run',
+      'Google Cloud Logging',
+      'Google Search Grounding',
+    ],
+    runtime: 'Node.js',
+    runtimeVersion: process.version,
+  });
+});
+
+// ─── Global Error Handler ─────────────────────────────────────────────────────
+
+/**
+ * Express 4/5 catch-all error middleware.
+ * Only invoked for errors passed via next(err) or unhandled throws in async routes.
+ *
+ * @param {Error}            err  - The error object.
+ * @param {express.Request}  req  - Express request.
+ * @param {express.Response} res  - Express response.
+ * @param {Function}         next - Next middleware (required by Express signature).
+ */
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  const status = err instanceof AppError ? err.status : 500;
+  log('ERROR', err.message, { stack: err.stack });
+  res.status(status).json({ error: err.message || 'Internal server error.' });
 });
 
 // ─── Server Start ─────────────────────────────────────────────────────────────
@@ -382,10 +526,21 @@ if (require.main === module) {
   process.on('SIGTERM', () => {
     log('INFO', 'SIGTERM received. Shutting down gracefully.');
     server.close(() => {
-      log('INFO', 'Server closed.');
+      log('INFO', 'Server closed (SIGTERM).');
+      process.exit(0);
+    });
+  });
+
+  /**
+   * Handle SIGINT (Ctrl+C in development) for clean local shutdowns.
+   */
+  process.on('SIGINT', () => {
+    log('INFO', 'SIGINT received. Shutting down gracefully.');
+    server.close(() => {
+      log('INFO', 'Server closed (SIGINT).');
       process.exit(0);
     });
   });
 }
 
-module.exports = { app, sanitizeInput };
+module.exports = { app, sanitizeInput, isSafeForPrompt, AppError };
