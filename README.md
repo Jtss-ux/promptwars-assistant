@@ -249,10 +249,6 @@ gcloud run deploy logicflow-assistant \
 - Firestore + Secret Manager availability is optional — the app degrades gracefully
 - The in-memory cache is process-scoped; a Redis layer would be used in multi-instance production
 
-## 🔗 Linked Open Code
-As part of the submission requirements, this project references the following open-source code for Antigravity integration (Note: This link is provided for reference only and has no effect on this project's executed code):
-[OpenCode Antigravity Auth](https://github.com/NoeFabris/opencode-antigravity-auth)
-
 ## 📄 License
 
 [MIT](./LICENSE) © LogicFlow Team
