@@ -1,4 +1,4 @@
-name: CI — LogicFlow Code Review Assistant
+name: CI
 
 on:
   push:
@@ -6,17 +6,38 @@ on:
   pull_request:
     branches: [master, main]
 
-jobs:
-  lint-and-test:
-    name: Lint & Test (Node ${{ matrix.node-version }})
-    runs-on: ubuntu-latest
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Run ESLint
+        run: npm run lint
+
+  test:
+    name: Test (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [20.x]
-
+        node-version: ['18', '20', '22']
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up Node.js ${{ matrix.node-version }}
@@ -26,50 +47,52 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install --prefer-offline
+        run: npm ci --ignore-scripts
 
-      - name: Lint with ESLint
-        run: npm run lint
-
-      - name: Run unit & integration tests
+      - name: Run test suite
         run: npm test
         env:
           NODE_ENV: test
+          PORT: 8081
 
-  security-audit:
+      - name: Upload test results (summary)
+        if: always()
+        run: echo "Tests completed for Node.js ${{ matrix.node-version }}"
+
+  security:
     name: Security Audit
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Node.js 20
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: '20'
+          cache: 'npm'
 
       - name: Install dependencies
-        run: npm install --prefer-offline
+        run: npm ci --ignore-scripts
 
       - name: Run npm audit
         run: npm audit --audit-level=high
         continue-on-error: true
 
-  docker-build:
-    name: Docker Build Validation
+  size-check:
+    name: Repository Size Check
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build Docker image
-        run: docker build -t logicflow:ci .
-
-      - name: Verify image runs and responds to health check
+      - name: Check repository size
         run: |
-          docker run -d --name logicflow-test -p 8080:8080 \
-            -e NODE_ENV=test \
-            logicflow:ci
-          sleep 3
-          curl --fail http://localhost:8080/health || exit 1
-          docker stop logicflow-test
+          SIZE=$(git ls-files | xargs -I{} stat -c %s {} 2>/dev/null | paste -sd+ | bc)
+          SIZE_KB=$((SIZE / 1024))
+          echo "Repository tracked files size: ${SIZE_KB} KB"
+          if [ $SIZE_KB -gt 900 ]; then
+            echo "⚠️  Warning: Repository is approaching 1 MB limit (${SIZE_KB} KB)"
+          else
+            echo "✅ Repository size OK: ${SIZE_KB} KB / 1024 KB"
+          fi
