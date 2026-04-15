@@ -36,6 +36,16 @@ require('dotenv').config();
 // ─── Google Cloud Utility Modules ────────────────────────────────────────────
 const { saveConversationTurn } = require('./src/utils/firestore');
 const { recordChatRequest, recordAiLatency } = require('./src/utils/metrics');
+const { getSecret } = require('./src/utils/secrets');
+
+// Note: additional modular implementations live in:
+//   src/middleware/security.js — Helmet, CORS, rate-limit config
+//   src/routes/chat.js        — POST /api/chat router
+//   src/routes/health.js      — GET /health & /api/version routers
+//   src/utils/ai.js           — Gemini / Vertex AI client abstraction
+//   src/utils/cache.js        — in-memory response cache
+//   src/utils/sanitize.js     — input sanitization utilities
+//   src/utils/logger.js       — structured Cloud Logging helper
 
 // ─── Custom Error Class ───────────────────────────────────────────────────────
 
@@ -661,36 +671,60 @@ app.use((err, req, res, next) => {
 
 const PORT = parseInt(process.env.PORT, 10) || 8080;
 
+/**
+ * Bootstrap: attempt to load GEMINI_API_KEY from Google Cloud Secret Manager.
+ * If Secret Manager is unavailable (local dev), falls back to the GEMINI_API_KEY
+ * environment variable silently.
+ *
+ * This ensures the API key is never stored in source control while remaining
+ * available in Cloud Run via the Secret Manager IAM binding.
+ */
+async function bootstrapSecrets() {
+  const project = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT;
+  if (project && !process.env.GEMINI_API_KEY) {
+    const secretName = `projects/${project}/secrets/gemini-api-key/versions/latest`;
+    const key = await getSecret(secretName, process.env.GEMINI_API_KEY);
+    if (key) {
+      process.env.GEMINI_API_KEY = key;
+      log('INFO', 'GEMINI_API_KEY loaded from Secret Manager.', { project });
+    }
+  }
+}
+
 // Only start listening when run directly (not when require'd by tests)
 if (require.main === module) {
-  const server = app.listen(PORT, () => {
-    log('INFO', `LogicFlow server running on port ${PORT}.`, { port: PORT });
-  });
+  bootstrapSecrets()
+    .catch((err) => log('WARNING', 'Secret Manager bootstrap failed.', { error: err.message }))
+    .finally(() => {
+      const server = app.listen(PORT, () => {
+        log('INFO', `LogicFlow server running on port ${PORT}.`, { port: PORT });
+      });
 
-  // ── Graceful Shutdown ───────────────────────────────────────────────────
+      // ── Graceful Shutdown ─────────────────────────────────────────────────
 
-  /**
-   * Handle SIGTERM (sent by Cloud Run during scale-down) to close
-   * active connections gracefully before the process exits.
-   */
-  process.on('SIGTERM', () => {
-    log('INFO', 'SIGTERM received. Shutting down gracefully.');
-    server.close(() => {
-      log('INFO', 'Server closed (SIGTERM).');
-      process.exit(0);
+      /**
+       * Handle SIGTERM (sent by Cloud Run during scale-down) to close
+       * active connections gracefully before the process exits.
+       */
+      process.on('SIGTERM', () => {
+        log('INFO', 'SIGTERM received. Shutting down gracefully.');
+        server.close(() => {
+          log('INFO', 'Server closed (SIGTERM).');
+          process.exit(0);
+        });
+      });
+
+      /**
+       * Handle SIGINT (Ctrl+C in development) for clean local shutdowns.
+       */
+      process.on('SIGINT', () => {
+        log('INFO', 'SIGINT received. Shutting down gracefully.');
+        server.close(() => {
+          log('INFO', 'Server closed (SIGINT).');
+          process.exit(0);
+        });
+      });
     });
-  });
-
-  /**
-   * Handle SIGINT (Ctrl+C in development) for clean local shutdowns.
-   */
-  process.on('SIGINT', () => {
-    log('INFO', 'SIGINT received. Shutting down gracefully.');
-    server.close(() => {
-      log('INFO', 'Server closed (SIGINT).');
-      process.exit(0);
-    });
-  });
 }
 
 module.exports = { app, sanitizeInput, isSafeForPrompt, AppError, getCacheKey, pruneCache };
